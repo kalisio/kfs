@@ -1,0 +1,10 @@
+[ 
+  {
+    "name": "hubeau",
+    "type" : "OverlayLayer",
+    "service": "hubeau-observations",
+    "probeService": "hubeau-stations",
+    "featureId": "code_station"
+  }
+]
+
