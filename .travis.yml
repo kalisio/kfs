@@ -4,19 +4,16 @@ notifications:
     on_success: always
     on_failure: always
     rooms:
-      - secure: xA3fcE2Paag088hwZfgluBqvu+wp7ZYJfUtpe0/xrq7AEB1yUmmmLkED8YSusEQoyTVoD9e+iY9mcpswvhnGCY7ox4KyJZ44VF5h0cr0cqFjQjTmzgmcuhRIsOS++icFEAOnejV7Ntpp1RI6xQQfBuecIr3NJC5zDQcXTobhvy/ItDOSQek1YNcpVDtSCxw/LI8CNb7Zs8ftZI4hjoA9lUC+3Vgn+WzR28uGgDd30EdyW6EerA8YrLhiHUZZkj57ms2M4nzvFHYynPLBIf6Ah1IPuQK81LF5o8Yj8H3h+Ww3o5/nbJkY7YgoRK1kGwh3WzdJF6eX2bkCKzFMe3T3gGBauLKkNgZAZc+7EX4P5Go+QgV5bHGaP1xYHysMiOowX67PvioVoqQEe/hHxmA/KMPKj5qiYvy8NuugnESRstdyauJFOg8ruYlBrKpTXOVrWvsW4LeCRvxcbFOLtZ/bJR6MtdvBGDhRwvF3Zq9H4CTLirRnr9wC+cm6SAPGnGMU9EPYibPAb0SnNqGA8JfMhf3mW8Q2sWc9AAld0mRNuqIfoWiSwQbuvRBUL7Cqtpgn26bInbeVo8+o9K/Pw1l2BF7Tj8RLaZTq0Jpx4bnbfUoAb83nrU8A5uPws/coDFxSMipT4xbmmgEwN5i/sFoOTChDUD/ivUH09edOxExbG84=
-
+      secure: duoHkCiUwWbda2lhciTHvMGuK8lvWMkPnYQ4aJ3VJM88sFBjXOJ8JuduWHyUbSZmcxoo2LtjUuv9r+qe2m58OLjrPpyL883+RuTNuRVFts5ei8MeINH6N0yFt3POoMkkUmA6AJNovNsJjdS8zyNBU0pn/pea/d31TEGURTr1HTfySYmi+Saitq8FYtiI/TmFq7N7k710shUKZ0KNXn3JannUdDYd4azWEpV36hV3cs3HHvv2FaZR74PN42mFI5Cu0MU3J3OxyuFwl4vQG2K0kOCK6HC9+fRCFVqyqoEEqHAzDvOybhZb5GnCEg/uqVGhREZUn/1kzVdIAS2s40ZdbLjaTB468joXbif5bNNtQIISZoYfVsWlRkj4jY6Z4YMBMFQokbdxQGOZjKZFb/Q72Qu48ag3+8QnCPJOie8LAvYfFqzxN85UWtFHBSyQ9ivcguMZqfPCavjcCIceYh3amOi7K7gc+oaCFAbJzdNp6GpbOWQh5S3ApoevcUFdiBKU1Kf98HNnJKZQ75Lh6c7eGC8CdkO4Ddu1BrUMC0LV/3WCkpAqt6uy/g/N0jwz5JCuLIi/PZeCdElgQPPRAIVExgKm/tYmCDlVlPdz4wBkXpFVk8UTnhrG5sZ4lLHkqjMnO3H+ygnmz/ujCYS1nQJWMYuddeec94zpP6p6T3tlHng=
 stages:
-  - name: BUILD
-
+- name: BUILD
 jobs:
   include:
-    - stage: BUILD
-      language: node_js
-      node_js:
-      - '16'
-      services:
-      - docker
-      script:
-      - bash .travis.build.sh
-      
+  - stage: BUILD
+    language: node_js
+    node_js:
+    - '16'
+    services:
+    - docker
+    script:
+    - bash .travis.build.sh
