@@ -3,7 +3,7 @@
 [![Latest Release](https://img.shields.io/github/v/tag/kalisio/kfs?sort=semver&label=latest)](https://github.com/kalisio/kfs/releases)
 [![Build Status](https://app.travis-ci.com/kalisio/kfs.svg?branch=master)](https://app.travis-ci.com/kalisio/kfs)
 
-**Kalisio Features Services**
+**Kalisio Features Service**
 
 **kfs** is a lightweight service that let you distribute geospatial data from [Kano](https://kalisio.github.io/kano/) using the [OGC API Features](https://ogcapi.ogc.org/features/) standard. 
 
@@ -22,7 +22,10 @@ Here are the environment variables you can use to customize the service:
 
 | Variable  | Description | Defaults |
 |-----------| ------------| ------------|
-| `XXX` | - | - |
+| `HOSTNAME` | Hostname | `localhost` |
+| `PORT` | Port the API will respond on | `8081` |
+| `BASE_URL` | Base service URL to be used to fill links | `http://${hostname}:${port}` |
+| `API_PREFIX` | Prefix used on API routes | `/api` |
 | `DEBUG` | The namespaces to enable debug output. Set it to `kfs:*` to enable full debug output. |  - |
 
 ## Building

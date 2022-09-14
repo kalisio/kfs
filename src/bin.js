@@ -2,8 +2,12 @@
 
 import createServer from './main.js'
 
-try {
-  await createServer()
-} catch (error) {
-  process.exit(1)
+async function run () {
+  try {
+    await createServer()
+  } catch (error) {
+    process.exit(1)
+  }
 }
+
+run()

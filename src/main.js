@@ -1,5 +1,4 @@
 import _ from 'lodash'
-import path from 'path'
 import fs from 'fs-extra'
 import winston from 'winston'
 import 'winston-daily-rotate-file'
@@ -8,7 +7,6 @@ import cors from 'cors'
 import helmet from 'helmet'
 import feathers from '@feathersjs/feathers'
 import configuration from '@feathersjs/configuration'
-import errors from '@feathersjs/errors'
 import express from '@feathersjs/express'
 import distribution from '@kalisio/feathers-distributed'
 import hooks from './hooks.js'
@@ -71,6 +69,6 @@ export default async function createServer () {
   const server = await app.listen(port)
   server.app = app
   server.app.logger.info('Server started listening')
-  
+
   return server
 }

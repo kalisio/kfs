@@ -1,30 +1,30 @@
 import _ from 'lodash'
 import envsub from 'envsub'
 
-function getEnvsubOptions(app) {
+function getEnvsubOptions (app) {
   const baseUrl = app.get('baseUrl')
   const apiPath = app.get('apiPath')
   return {
-  	syntax: 'handlebars', 
-  	envs: [
-	    { name: 'BASE_URL', value: baseUrl }, // see --env flag
-	    { name: 'API_PREFIX', value: apiPath }
-	  ]
-	}
+    syntax: 'handlebars',
+    envs: [
+      { name: 'BASE_URL', value: baseUrl }, // see --env flag
+      { name: 'API_PREFIX', value: apiPath }
+    ]
+  }
 }
 
-export async function getApiFile(app, file) {
+export async function getApiFile (app, file) {
   const config = app.get('api')
   file = _.get(config, file)
   const result = await envsub({
-  	templateFile: file,
-  	outputFile: file + '.envsubh',
-  	options: getEnvsubOptions(app)
+    templateFile: file,
+    outputFile: file + '.envsubh',
+    options: getEnvsubOptions(app)
   })
   return JSON.parse(result.outputContents)
 }
 
-export function generateCollectionExtent(name) {
+export function generateCollectionExtent (name) {
   // TODO: compute spatial extent based on data
   return {
     extent: {
@@ -39,8 +39,8 @@ export function generateCollectionExtent(name) {
   }
 }
 
-export function generateCollectionLinks(baseUrl, name) {
-	return [{
+export function generateCollectionLinks (baseUrl, name) {
+  return [{
     href: `${baseUrl}/collections/${name}/items?f=application/json`,
     rel: 'items',
     type: 'application/geo+json',
@@ -54,7 +54,7 @@ export function generateCollectionLinks(baseUrl, name) {
   }]
 }
 
-export function generateCollection(baseUrl, name, title, description) {
+export function generateCollection (baseUrl, name, title, description) {
   const links = generateCollectionLinks(baseUrl, name)
   const extent = generateCollectionExtent(name)
   return Object.assign({
@@ -66,11 +66,11 @@ export function generateCollection(baseUrl, name, title, description) {
   }, extent)
 }
 
-export function generateCollections(baseUrl, layer) {
-	let collections = []
-	// Take i18n into account if any
-	const title = _.get(layer, `i18n.en.${layer.name}`, layer.name)
-	const description = _.get(layer, `i18n.en.${layer.description}`, layer.description)
+export function generateCollections (baseUrl, layer) {
+  const collections = []
+  // Take i18n into account if any
+  const title = _.get(layer, `i18n.en.${layer.name}`, layer.name)
+  const description = _.get(layer, `i18n.en.${layer.description}`, layer.description)
   // Probe service as well ?
   if (layer.probeService) {
     collections.push(generateCollection(baseUrl, layer.service, title + ' (measures)', description))
@@ -78,11 +78,11 @@ export function generateCollections(baseUrl, layer) {
   } else {
     collections.push(generateCollection(baseUrl, layer.service, title, description))
   }
-	return collections
+  return collections
 }
 
-export function convertQuery(query) {
-  let convertedQuery = {}
+export function convertQuery (query) {
+  const convertedQuery = {}
   if (query.limit) {
     convertedQuery.$limit = query.limit
   }
@@ -98,7 +98,7 @@ export function convertQuery(query) {
   return convertedQuery
 }
 
-export function convertFeatureCollection(featureCollection) {
+export function convertFeatureCollection (featureCollection) {
   featureCollection.numberMatched = featureCollection.total
   featureCollection.numberReturned = featureCollection.features.length
   delete featureCollection.total

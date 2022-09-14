@@ -8,15 +8,15 @@ import request from 'superagent'
 import { fileURLToPath } from 'url'
 import distribution, { finalize } from '@kalisio/feathers-distributed'
 import { kdk } from '@kalisio/kdk/core.api.js'
-import map, { createFeaturesService, createCatalogService } from '@kalisio/kdk/map.api.js'
+import { createFeaturesService, createCatalogService } from '@kalisio/kdk/map.api.js'
 import createServer from '../src/main.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { util, expect } = chai
 
 describe('map:services', () => {
-  let app, server, port, baseUrl, apiPath,
-      kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService
+  let app, server, baseUrl, apiPath,
+    kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService
 
   before(async () => {
     chailint(chai, util)
@@ -31,7 +31,7 @@ describe('map:services', () => {
     // Distribute services
     kapp.configure(distribution({
       // Use cote defaults to speedup tests
-      cote: { 
+      cote: {
         helloInterval: 2000,
         checkInterval: 4000,
         nodeTimeout: 5000,
@@ -56,7 +56,6 @@ describe('map:services', () => {
     expect(server).toExist()
     app = server.app
     expect(app).toExist()
-    port = app.get('port')
     baseUrl = app.get('baseUrl')
     apiPath = app.get('apiPath')
     // Wait long enough to be sure distribution is up
@@ -155,12 +154,12 @@ describe('map:services', () => {
 
   it('get nonexistent collection', (done) => {
     request.get(`${baseUrl}${apiPath}/collections/xxx`)
-    .catch(data => {
-      const error = data.response.body
-      expect(error).toExist()
-      expect(error.name).to.equal('NotFound')
-      done()
-    })
+      .catch(data => {
+        const error = data.response.body
+        expect(error).toExist()
+        expect(error.name).to.equal('NotFound')
+        done()
+      })
   })
   // Let enough time to process
     .timeout(5000)
