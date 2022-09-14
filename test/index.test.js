@@ -16,7 +16,8 @@ const { util, expect } = chai
 
 describe('kfs', () => {
   let app, server, baseUrl, apiPath,
-    kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService
+    kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
+    nbStations
 
   before(async () => {
     chailint(chai, util)
@@ -87,6 +88,7 @@ describe('kfs', () => {
     expect(hubeauStationsService).toExist()
     // Feed the collection
     const stations = fs.readJsonSync(path.join(__dirname, 'data/hubeau.stations.json')).features
+    nbStations = stations.length
     await hubeauStationsService.create(stations)
   })
   // Let enough time to process
@@ -169,6 +171,32 @@ describe('kfs', () => {
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStations)
+    expect(response.body.numberReturned).to.equal(nbStations)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items in bbox', async () => {
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+      .query({ bbox: [6.39, 48.30, 6.41, 48.32] })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get paginated items', async () => {
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+      .query({ limit: 10 })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStations)
+    expect(response.body.numberReturned).to.equal(10)
   })
   // Let enough time to process
     .timeout(5000)

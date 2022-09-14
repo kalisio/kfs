@@ -9,7 +9,9 @@
 
 **Kalisio Features Service**
 
-**kfs** is a lightweight service that let you distribute geospatial data from [Kano](https://kalisio.github.io/kano/) using the [OGC API Features](https://ogcapi.ogc.org/features/) standard. 
+**kfs** is a lightweight service that let you distribute geospatial data from [Kano](https://kalisio.github.io/kano/) using the [OGC API Features](https://ogcapi.ogc.org/features/) standard.
+
+Each service-based layer from Kano will generate two or one feature collection(s) depending if probes are used or not.
 
 ## API
 
