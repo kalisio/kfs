@@ -1,0 +1,740 @@
+{
+  "api" : "3.0.1",
+  "info" : {
+    "title" : "OGC API - Features Server"
+  },
+  "externalDocs" : {
+    "description" : "OGC API - Features standard"
+  },
+  "servers" : [
+    {
+      "url" : "{{BASE_URL}}{{API_PREFIX}}",
+      "description" : "This server"
+    }
+  ],
+  "tags" : [
+    {
+      "name" : "Capabilities",
+      "description" : "Essential characteristics of this API including information about the data."
+    },
+    {
+      "name" : "Features",
+      "description" : "Access to data(features)."
+    }
+  ],
+  "paths" : {
+    "/" : {
+      "get" : {
+        "tags" : [
+          "Capabilities"
+        ],
+        "summary" : "landing page of this API",
+        "description" : "The landing page provides links to the API definition, the Conformance statements and the metadata about the feature data in this dataset.",
+        "operationId" : "getLandingPage",
+        "responses" : {
+          "responses" : {
+            "description" : "links to the API capabilities",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/root"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conformance" : {
+      "get" : {
+        "tags" : [
+          "Capabilities"
+        ],
+        "summary" : "information about standards that this API conforms to",
+        "description" : "list all requirements classes specified in a standard(e.g., WFS 3.0 Part 1: Core) that the server conforms to",
+        "operationId" : "getRequirementsClasses",
+        "responses" : {
+          "200" : {
+            "description" : "the URIs of all requirements classes supported by the server",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/req-classes"
+                }
+              },
+              "application/x-yaml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/req-classes"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "An error occured.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/exception"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections" : {
+      "get" : {
+        "tags" : [
+          "Capabilities"
+        ],
+        "summary" : "describe the feature collections in the dataset",
+        "operationId" : "describeCollections",
+        "responses" : {
+          "200" : {
+            "description" : "Metadata about the feature collections shared by this API.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/content"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "An error occured.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/exception"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}" : {
+      "get" : {
+        "tags" : [
+          "Capabilities"
+        ],
+        "summary" : "describe the { collectionId } feature collection",
+        "operationId" : "describeCollection",
+        "parameters" : [
+          {
+            "$ref" : "#/components/parameters/collectionId"
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "Metadata about the { collectionId } collection shared by this API.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/collectionInfo"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "An error occured.",
+            "default" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/exception"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items" : {
+      "get" : {
+        "tags" : [
+          "Features"
+        ],
+        "summary" : "retrieve the features from the { collectionId } collection",
+        "discription" : "Every feature in a dataset belongs to a collection.",
+        "operationId" : "getFeatures",
+        "parameters" : [
+          {
+            "$ref" : "#/components/parameters/collectionId"
+          },
+          {
+            "$ref" : "#/components/parameters/limit"
+          },
+          {
+            "$ref" : "#/components/parameters/bbox"
+          },
+          {
+            "$ref" : "#/components/parameters/datetime"
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "Information about the feature collection plus the first features matching the selection parameters.",
+            "content" : {
+              "application/geo+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/featureCollectionGeoJSON"
+                }
+              },
+              "application/json" : {
+                "schema" : {
+                  "type" : "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{featureId}" : {
+      "get" : {
+        "tags" : [
+          "Features"
+        ],
+        "summary" : "retrieve a feature; use content negotiation to request HTML or GeoJSON",
+        "operationId" : "getFeature",
+        "parameters" : [
+          {
+            "$ref" : "#/components/parameters/collectionId"
+          },
+          {
+            "$ref" : "#/components/parameters/featureId"
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "A feature",
+            "content" : {
+              "application/geo+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/featureGeoJSON"
+                }
+              },
+              "application/json" : {
+                "schema" : {
+                  "type" : "binary"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "An error occured.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/exception"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "queryables" : {
+        "required" : [
+          "queryables"
+        ],
+        "type" : "object",
+        "properties" : {
+          "queryables" : {
+            "type" : "array",
+            "description" : "list of queryable properties",
+            "items" : {
+              "$ref" : "#/components/schemas/queryable"
+            }
+          }
+        }
+      },
+      "queryable" : {
+        "required" : [
+          "name",
+          "type"
+        ],
+        "type" : "object",
+        "properties" : {
+          "Id" : {
+            "type" : "string",
+            "description" : "identifier of the attribute that can be used in CQL filters.",
+            "example" : "zipcode"
+          },
+          "type" : {
+            "Type" : "string",
+            "description" : "The property type."
+          }
+        }
+      },
+      "exception" : {
+        "required" : [
+          "code"
+        ],
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          }
+        }
+      },
+      "root" : {
+        "required" : [
+          "links"
+        ],
+        "type" : "object",
+        "properties" : {
+          "links" : {
+            "type" : "array",
+            "example" : [
+              {
+                "href" : "http://data.example.org/",
+                "rel" : "self",
+                "type" : "application/json",
+                "title" : "this document"
+              },
+              {
+                "href" : "http://data.example.org/api",
+                "rel" : "service",
+                "type" : "application/api+json;version=3.0",
+                "title" : "the API definition"
+              },
+              {
+                "href" : "http://data.example.org/conformance",
+                "rel" : "conformance",
+                "type" : "application/json",
+                "title" : "Conformance declaration as application/json"
+              },
+              {
+                "href" : "http://data.example.org/collections",
+                "rel" : "data",
+                "type" : "application/json",
+                "title" : "Metadata about the feature collections"
+              }
+            ],
+            "items" : {
+              "$ref" : "#/components/schemas/link"
+            }
+          }
+        }
+      },
+      "req-classes" : {
+        "required" : [
+          "conformsTo"
+        ],
+        "type" : "object",
+        "properties" : {
+          "conformsTo" : {
+            "type" : "array",
+            "example" : [
+              "http://www.opengis.net/spec/wfs-1/3.0/req/core",
+              "http://www.opengis.net/spec/wfs-1/3.0/req/oas30",
+              "http://www.opengis.net/spec/wfs-1/3.0/req/geojson"
+            ],
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "link" : {
+        "required" : [
+          "href"
+        ],
+        "type" : "object",
+        "properties" : {
+          "href" : {
+            "type" : "string"
+          },
+          "rel" : {
+            "type" : "string",
+            "example" : "prev"
+          },
+          "type" : {
+            "type" : "string",
+            "example" : "application/geo+json"
+          },
+          "hreflang" : {
+            "type" : "string",
+            "example" : "en"
+          }
+        }
+      },
+      "content" : {
+        "required" : [
+          "collections",
+          "links"
+        ],
+        "type" : "object",
+        "properties" : {
+          "links" : {
+            "type" : "array",
+            "example" : [
+              {
+                "href" : "http://data.example.org/collections.json",
+                "rel" : "self",
+                "type" : "application/json",
+                "title" : "this document"
+              }
+            ],
+            "items" : {
+              "$ref" : "#/components/schemas/link"
+            }
+          },
+          "collections" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/collectionInfo"
+            }
+          }
+        }
+      },
+      "collectionInfo" : {
+        "required" : [
+          "links",
+          "name"
+        ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "identifier of the collection used, for example, in URIs",
+            "example" : "buildings"
+          },
+          "title" : {
+            "type" : "string",
+            "description" : "human readable title of the collection",
+            "example" : "buildings"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "a description of the features in the collection",
+            "example" : "buildings"
+          },
+          "links" : {
+            "type" : "array",
+            "example" : [
+              {
+                "href" : "http://data.example.org/collections/buildings/items",
+                "rel" : "item",
+                "type" : "application/geo+json",
+                "title" : "Building"
+              }
+            ],
+            "items" : {
+              "$ref" : "#/components/schemas/link"
+            }
+          },
+          "extent" : {
+            "$ref" : "#/components/schemas/extent"
+          },
+          "crs" : {
+            "type" : "array",
+            "description" : "The coordinate reference systems in which geometries may be retrieved.",
+            "items" : {
+              "type" : "string"
+            },
+            "default" : [
+              "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+            ]
+          }
+        }
+      },
+      "extent" : {
+        "type" : "object",
+        "properties" : {
+          "crs" : {
+            "type" : "string",
+            "description" : "Coordinate reference system of the coordinates in the spatial extent.",
+            "enum" : [
+              "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+            ],
+            "default" : "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+          },
+          "spatial" : {
+            "maxItems" : 6,
+            "minItems" : 4,
+            "type" : "array",
+            "discription" : {
+              "description" : "West, north, east, south edges of the spatial extent"
+            },
+            "example" : [
+              -180,
+              -90,
+              180,
+              90
+            ],
+            "items" : {
+              "type" : "number"
+            }
+          },
+          "trs" : {
+            "type" : "string",
+            "discription" : "Temporal reference system of the coordinates in the temporal extent.",
+            "enum" : [
+              "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian"
+            ],
+            "default" : "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian"
+          },
+          "temporal" : {
+            "maxItems" : 2,
+            "minItems" : 2,
+            "type" : "array",
+            "discription" : "Begin and end times of the temporal extent.",
+            "example" : [
+              "2011-11-11T12:22:11Z",
+              "2012-11-24T12:32:43Z"
+            ],
+            "items" : {
+              "type" : "string",
+              "format" : "dateTime"
+            }
+          }
+        }
+      },
+      "featureCollectionGeoJSON" : {
+        "required" : [
+          "features",
+          "type"
+        ],
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [
+              "FeatureCollection"
+            ]
+          },
+          "features" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/featureGeoJSON"
+            }
+          },
+          "links" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/link"
+            }
+          },
+          "timeStamp" : {
+            "type" : "string",
+            "format" : "dateTime"
+          },
+          "numberMatched" : {
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "numberReturned" : {
+            "minimum" : 0,
+            "type" : "integer"
+          }
+        }
+      },
+      "featureGeoJSON" : {
+        "required" : [
+          "geometry",
+          "properties",
+          "type"
+        ],
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [
+              "Feature"
+            ]
+          },
+          "geometry" : {
+            "$ref" : "#/components/schemas/geometryGeoJSON"
+          },
+          "properties" : {
+            "type" : "object",
+            "nullable" : "true"
+          },
+          "id" : {
+            "oneOf" : [
+              {
+                "type" : "string"
+              },
+              {
+                "type" : "integer"
+              }
+            ]
+          }
+        }
+      },
+      "geometryGeoJSON" : {
+        "required" : [
+          "type"
+        ],
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : {
+              "type" : "string"
+            },
+            "required" : [
+              "Point",
+              "MultiPoint",
+              "LineString",
+              "MultiLineString",
+              "Polygon",
+              "MultiPolygon",
+              "GeometryCollection"
+            ]
+          }
+        }
+      },
+      "timeStamp" : {
+        "type" : "string",
+        "description" : "This property indicates the time and date when the response was generated.",
+        "format" : "date-time"
+      },
+      "securitySchemes" : {
+        "client_token_auth" : {
+          "type" : "apiKey",
+          "description" : "API key to authorize requests.",
+          "in" : "query",
+          "name" : "token"
+        },
+        "bearerAuth" : {
+          "type" : "http",
+          "description" : "API bearer key to authorize requests from header.",
+          "schema" : "bearer",
+          "bearerFormat" : "Authorization"
+        }
+      }
+    },
+    "parameters" : {
+      "limit" : {
+        "name" : "limit",
+        "in" : "query",
+        "description" : "The optional limit parameter limits the number of items that are presented in the response document.",
+        "required" : false,
+        "style" : "form",
+        "explode" : false,
+        "schema" : {
+          "maximum" : 3000,
+          "minimum" : 1,
+          "type" : "integer",
+          "default" : 3000
+        }
+      },
+      "bbox" : {
+        "name" : "bbox",
+        "in" : "query",
+        "description" : "The bounding box is provided as four numbers.",
+        "required" : false,
+        "style" : "form",
+        "explode" : false,
+        "schema" : {
+          "maxItems" : 4,
+          "minItems" : 4,
+          "type" : "array",
+          "items" : {
+            "type" : "number"
+          }
+        }
+      },
+      "datetime" : {
+        "name" : "time",
+        "in" : "query",
+        "description" : "Either a date-time or a period string that adheres to RFC 3339.",
+        "required" : false,
+        "style" : "form",
+        "explode" : false,
+        "schema" : {
+          "type" : "string"
+        }
+      },
+      "collectionId" : {
+        "name" : "collectionId",
+        "in" : "path",
+        "description" : "Identifier (name) of a specific collection",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      },
+      "featureId" : {
+        "name" : "featureId",
+        "in" : "path",
+        "description" : "Local identifier of a specific feature",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      },
+      "filter" : {
+        "name" : "feature",
+        "in" : "query",
+        "description" : "Filter features in the collection using the query expression in the parameter value.",
+        "required" : false,
+        "explode" : false,
+        "schema" : {
+          "type" : "string"
+        }
+      },
+      "filter-lang" : {
+        "name" : "filter-lang",
+        "in" : "query",
+        "description" : "Language of the query expression in the 'filter' parameter.",
+        "required" : false,
+        "explode" : false,
+        "style" : "form",
+        "schema" : {
+          "type" : "string",
+          "default" : "cql-text",
+          "enum" : [
+            "cql-text"
+          ]
+        }
+      },
+      "crs" : {
+        "name" : "crs",
+        "in" : "query",
+        "description" : "The coordinate reference system. Default is WGS84 longitude/latitude (http://www.opengis.net/def/crs/OGC/1.3/CRS84).",
+        "required" : true,
+        "explode" : false,
+        "style" : "form",
+        "schema" : {
+          "type" : "string",
+          "default" : "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+        }
+      },
+      "bbox-crs" : {
+        "name" : "bbox-crs",
+        "in" : "query",
+        "description" : "The coordinate reference system. Default is WGS84 longitude/latitude (http://www.opengis.net/def/crs/OGC/1.3/CRS84).",
+        "required" : true,
+        "explode" : false,
+        "style" : "form",
+        "schema" : {
+          "type" : "string",
+          "default" : "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+        }
+      }
+    },
+    "securitySchemes" : {
+      "client_token_auth" : {
+        "type" : "apiKey",
+        "description" : "API key to authorize requests.",
+        "in" : "query",
+        "name" : "token"
+      },
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "API bearer key to authorize requests from header.",
+        "schema" : "bearer",
+        "bearerFormat" : "Authorization"
+      }
+    }
+  }
+}

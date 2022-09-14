@@ -6,21 +6,29 @@ import 'winston-daily-rotate-file'
 import compress from 'compression'
 import cors from 'cors'
 import helmet from 'helmet'
-import { fileURLToPath } from 'url'
 import feathers from '@feathersjs/feathers'
 import configuration from '@feathersjs/configuration'
 import errors from '@feathersjs/errors'
 import express from '@feathersjs/express'
+import distribution from '@kalisio/feathers-distributed'
 import hooks from './hooks.js'
 import channels from './channels.js'
+import routes from './routes.js'
 import middlewares from './middlewares.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { rest } = express
 
 export default async function createServer () {
   const app = express(feathers())
+  // Override Feathers configure that do not manage async operations,
+  // here we also simply call the function given as parameter but await for it
+  app.configure = async function (fn) {
+    await fn.call(this, this)
+    return this
+  }
   app.configure(configuration())
+  // Get distributed services
+  app.configure(distribution(app.get('distribution')))
   // Enable CORS, security, compression, and body parsing
   app.use(cors(app.get('cors')))
   app.use(helmet(app.get('helmet')))
@@ -31,19 +39,6 @@ export default async function createServer () {
 
   // Set up plugins and providers
   app.configure(rest())
-
-  const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
-  app.use(app.get('apiPath') + '/healthcheck', (req, res, next) => {
-      const response = {
-        name: 'kfs',
-        // Allow to override version number for custom build
-        version: (process.env.VERSION ? process.env.VERSION : packageInfo.version)
-      }
-      if (process.env.BUILD_NUMBER) {
-        response.buildNumber = process.env.BUILD_NUMBER
-      }
-      res.json(response)
-    })
 
   // Logger
   const config = app.get('logs')
@@ -66,6 +61,8 @@ export default async function createServer () {
   app.hooks(hooks)
   // Set up real-time event channels
   app.configure(channels)
+  // Configure API routes
+  await app.configure(routes)
   // Configure middlewares - always has to be last
   app.configure(middlewares)
 

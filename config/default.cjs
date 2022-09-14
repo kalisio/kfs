@@ -1,13 +1,21 @@
 const path = require('path')
 const winston = require('winston')
 
+const host = process.env.HOSTNAME || 'localhost'
 const port = process.env.PORT || 8081
-const API_PREFIX = '/api'
+const apiPath = process.env.API_PREFIX || '/api'
+const baseUrl = process.env.BASE_URL || `http://${host}:${port}`
 
 module.exports = {
-  host: process.env.HOSTNAME || 'localhost',
-  port: process.env.PORT || 8081,
-  apiPath: API_PREFIX,
+  host,
+  port,
+  baseUrl,
+  apiPath,
+  api: {
+    landingPage: path.join(__dirname, 'api-landing-page.json'),
+    definition: path.join(__dirname, 'api-definition.json'),
+    conformance: path.join(__dirname, 'api-conformance.json')
+  },
   logs: {
     Console: {
       format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
@@ -20,5 +28,10 @@ module.exports = {
       datePattern: 'YYYY-MM-DD',
       maxFiles: '30d'
     }
+  },
+  distribution: { // Distribute no services simply use remote ones from Kano
+    services: (service) => false,
+    remoteServices: (service) => (service.key === 'kano'),
+    healthcheckPath: apiPath + '/distribution/'
   }
 }

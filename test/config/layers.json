@@ -1,6 +1,21 @@
 [ 
   {
-    "name": "hubeau",
+    "name": "Layers.HUBEAU",
+    "description": "Layers.HUBEAU_DESCRIPTION",
+    "i18n": {
+      "fr": {
+        "Layers": {
+          "HUBEAU": "Hub Eau",
+          "HUBEAU_DESCRIPTION": "Données hydrométriques"
+        }
+      },
+      "en": {
+        "Layers": {
+          "HUBEAU": "Hub Eau",
+          "HUBEAU_DESCRIPTION": "Hydrometric data"
+        }
+      }
+    },
     "type" : "OverlayLayer",
     "service": "hubeau-observations",
     "probeService": "hubeau-stations",

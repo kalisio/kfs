@@ -10,6 +10,7 @@ pids
 *.pid
 *.seed
 *.pid.lock
+*.envsubh
 
 # Coverage directory used by tools like istanbul
 coverage
