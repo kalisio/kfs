@@ -14,7 +14,7 @@ import createServer from '../src/main.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { util, expect } = chai
 
-describe('map:services', () => {
+describe('kfs', () => {
   let app, server, baseUrl, apiPath,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService
 
