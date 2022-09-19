@@ -19,7 +19,7 @@
     },
     {
       "name" : "Features",
-      "description" : "Access to data(features)."
+      "description" : "Access to data (features)."
     }
   ],
   "paths" : {
@@ -51,7 +51,7 @@
           "Capabilities"
         ],
         "summary" : "information about standards that this API conforms to",
-        "description" : "list all requirements classes specified in a standard(e.g., WFS 3.0 Part 1: Core) that the server conforms to",
+        "description" : "list all requirements classes specified in a standard(e.g., Part 1: Core) that the server conforms to",
         "operationId" : "getRequirementsClasses",
         "responses" : {
           "200" : {
