@@ -16,7 +16,7 @@ jobs:
   - stage: BUILD
     language: node_js
     node_js:
-    - '16'
+    - '12'
     services:
     - docker
     script:
@@ -24,7 +24,7 @@ jobs:
   - stage: TEST
     language: node_js
     node_js:
-    - '16'
+    - '12'
     services:
     - mongodb
     env:
