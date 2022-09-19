@@ -7,7 +7,7 @@
 [![Dependency Status](https://img.shields.io/david/kalisio/kfs.svg?style=flat-square)](https://david-dm.org/kalisio/kfs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Kalisio Features Service**
+**Kano Features Service**
 
 **kfs** is a lightweight service that let you distribute geospatial data from [Kano](https://kalisio.github.io/kano/) using the [OGC API Features](https://ogcapi.ogc.org/features/) standard.
 
@@ -16,9 +16,10 @@ Each service-based layer from Kano will generate two or one feature collection(s
 ## API
 
 Please refer to the [OGC API Features](https://ogcapi.ogc.org/features/) standard for details. Here are the current limitations:
+* only the Part 1 of the standard is implemented
 * only the [GeoJson encoding](https://docs.opengeospatial.org/is/17-069r4/17-069r4.html#_requirements_class_geojson) is supported
 
-### healthcheck (GET)
+### /healthcheck (GET)
 
 Check for the health of the service
 
