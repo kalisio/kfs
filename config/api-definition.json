@@ -8,7 +8,7 @@
   },
   "servers" : [
     {
-      "url" : "{{BASE_URL}}{{API_PREFIX}}",
+      "url" : "{{BASE_URL}}",
       "description" : "This server"
     }
   ],
