@@ -27,7 +27,7 @@ export default async function (app) {
 
   // API landing page
   const landingPage = await utils.getApiFile(app, 'landingPage')
-  app.get(apiPath, (req, res, next) => {
+  app.get(apiPath || '/', (req, res, next) => {
     res.json(landingPage)
   })
 
