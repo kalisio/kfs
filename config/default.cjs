@@ -3,7 +3,7 @@ const winston = require('winston')
 
 const host = process.env.HOSTNAME || 'localhost'
 const port = process.env.PORT || 8081
-const apiPath = process.env.API_PREFIX || ''
+const apiPath = process.env.API_PREFIX || '/api'
 const baseUrl = process.env.BASE_URL || `http://${host}:${port}`
 
 module.exports = {
