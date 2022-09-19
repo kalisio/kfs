@@ -1,14 +1,12 @@
-import fs from 'fs-extra'
-import path from 'path'
-import _ from 'lodash'
-import errors from '@feathersjs/errors'
-import { fileURLToPath } from 'url'
-import * as utils from './utils.js'
+const fs = require('fs-extra')
+const path = require('path')
+const _ = require('lodash')
+const errors = require('@feathersjs/errors')
+const utils = require('./utils.js')
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { NotFound, GeneralError } = errors
 
-export default async function (app) {
+module.exports = async function (app) {
   const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
   const baseUrl = app.get('baseUrl')
   const apiPath = app.get('apiPath')

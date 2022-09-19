@@ -5,7 +5,6 @@
   "homepage": "https://github.com/kalisio/kfs",
   "main": "src/main.js",
   "bin": "src/bin.js",
-  "type": "module",
   "keywords": [
     "ogc",
     "api",
@@ -34,22 +33,20 @@
     "test": "npm run lint && npm run coverage"
   },
   "standard": {
-    "sourceType": "module",
     "env": [
       "mocha"
     ]
   },
   "dependencies": {
-    "@feathersjs/errors": "^5.0.0-pre.28",
-    "@feathersjs/express": "^5.0.0-pre.28",
-    "@feathersjs/feathers": "^5.0.0-pre.28",
-    "@feathersjs/schema": "5.0.0-pre.28",
-    "@kalisio/feathers-distributed": "^2.0.2",
+    "@feathersjs/errors": "^4.5.12",
+    "@feathersjs/express": "^4.5.12",
+    "@feathersjs/feathers": "^4.5.12",
+    "@kalisio/feathers-distributed": "^1.0.5",
     "compression": "^1.6.2",
     "containerized": "^1.0.2",
     "cors": "^2.8.1",
     "envsub": "^4.0.7",
-    "feathers-hooks-common": "^5.0.6",
+    "feathers-hooks-common": "^3.0.0",
     "feathers-mongodb-fuzzy-search": "^2.0.1",
     "fs-extra": "^10.0.1",
     "helmet": "^3.5.0",
@@ -59,8 +56,8 @@
     "winston-daily-rotate-file": "^3.10.0"
   },
   "devDependencies": {
-    "@feathersjs/memory": "^5.0.0-pre.28",
-    "@kalisio/kdk": "https://github.com/kalisio/kdk#es-modules",
+    "feathers-memory": "^4.0.1",
+    "@kalisio/kdk": "^1.7.0",
     "c8": "^7.11.0",
     "chai": "^4.3.6",
     "chai-lint": "^0.1.1",
@@ -69,6 +66,10 @@
     "nodemon": "^2.0.15",
     "shx": "^0.3.4",
     "standard": "^16.0.4",
-    "superagent": "^5.1.0"
+    "superagent": "^5.1.0",
+    "weacast-core": "^1.5.0"
+  },
+  "resolutions": {
+    "feathers-authentication-management": "2.0.0"
   }
 }

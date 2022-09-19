@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import createServer from './main.js'
+const createServer = require('./main.js')
 
 async function run () {
   try {

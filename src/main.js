@@ -1,22 +1,22 @@
-import _ from 'lodash'
-import fs from 'fs-extra'
-import winston from 'winston'
-import 'winston-daily-rotate-file'
-import compress from 'compression'
-import cors from 'cors'
-import helmet from 'helmet'
-import feathers from '@feathersjs/feathers'
-import configuration from '@feathersjs/configuration'
-import express from '@feathersjs/express'
-import distribution from '@kalisio/feathers-distributed'
-import hooks from './hooks.js'
-import channels from './channels.js'
-import routes from './routes.js'
-import middlewares from './middlewares.js'
+const _ = require('lodash')
+const fs = require('fs-extra')
+const winston = require('winston')
+require('winston-daily-rotate-file')
+const compress = require('compression')
+const cors = require('cors')
+const helmet = require('helmet')
+const feathers = require('@feathersjs/feathers')
+const configuration = require('@feathersjs/configuration')
+const express = require('@feathersjs/express')
+const distribution = require('@kalisio/feathers-distributed')
+const hooks = require('./hooks.js')
+const channels = require('./channels.js')
+const routes = require('./routes.js')
+const middlewares = require('./middlewares.js')
 
 const { rest } = express
 
-export default async function createServer () {
+module.exports = async function createServer () {
   const app = express(feathers())
   // Override Feathers configure that do not manage async operations,
   // here we also simply call the function given as parameter but await for it

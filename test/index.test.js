@@ -1,18 +1,18 @@
-import utility from 'util'
-import chai from 'chai'
-import chailint from 'chai-lint'
-import _ from 'lodash'
-import path from 'path'
-import fs from 'fs-extra'
-import request from 'superagent'
-import { fileURLToPath } from 'url'
-import distribution, { finalize } from '@kalisio/feathers-distributed'
-import { kdk } from '@kalisio/kdk/core.api.js'
-import { createFeaturesService, createCatalogService } from '@kalisio/kdk/map.api.js'
-import createServer from '../src/main.js'
+const utility = require('util')
+const chai = require('chai')
+const chailint = require('chai-lint')
+const _ = require('lodash')
+const path = require('path')
+const fs = require('fs-extra')
+const request = require('superagent')
+const distribution = require('@kalisio/feathers-distributed')
+const kCore = require('@kalisio/kdk/core.api')
+const kMap = require('@kalisio/kdk/map.api')
+const createServer = require('../src/main.js')
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { util, expect } = chai
+const { kalisio } = kCore
+const { createFeaturesService, createCatalogService } = kMap
 
 describe('kfs', () => {
   let app, server, baseUrl, apiPath,
@@ -23,12 +23,12 @@ describe('kfs', () => {
     chailint(chai, util)
   })
 
-  it('is ES module compatible', () => {
+  it('is ES6 compatible', () => {
     expect(typeof createServer).to.equal('function')
   })
 
   it('initialize the remote app', async () => {
-    kapp = kdk()
+    kapp = kalisio()
     // Distribute services
     kapp.configure(distribution({
       // Use cote defaults to speedup tests
@@ -204,7 +204,7 @@ describe('kfs', () => {
   // Cleanup
   after(async () => {
     if (server) await server.close()
-    finalize(kapp)
+    distribution.finalize(kapp)
     fs.emptyDirSync(path.join(__dirname, 'logs'))
     await catalogService.Model.drop()
     await hubeauStationsService.Model.drop()

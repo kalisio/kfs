@@ -1,5 +1,5 @@
-import _ from 'lodash'
-import envsub from 'envsub'
+const _ = require('lodash')
+const envsub = require('envsub')
 
 function getEnvsubOptions (app) {
   const baseUrl = app.get('baseUrl')
@@ -13,7 +13,7 @@ function getEnvsubOptions (app) {
   }
 }
 
-export async function getApiFile (app, file) {
+async function getApiFile (app, file) {
   const config = app.get('api')
   file = _.get(config, file)
   const result = await envsub({
@@ -24,7 +24,7 @@ export async function getApiFile (app, file) {
   return JSON.parse(result.outputContents)
 }
 
-export function generateCollectionExtent (name) {
+function generateCollectionExtent (name) {
   // TODO: compute spatial extent based on data
   return {
     extent: {
@@ -39,7 +39,7 @@ export function generateCollectionExtent (name) {
   }
 }
 
-export function generateCollectionLinks (baseUrl, name) {
+function generateCollectionLinks (baseUrl, name) {
   return [{
     href: `${baseUrl}/collections/${name}/items?f=application/json`,
     rel: 'items',
@@ -54,7 +54,7 @@ export function generateCollectionLinks (baseUrl, name) {
   }]
 }
 
-export function generateCollection (baseUrl, name, title, description) {
+function generateCollection (baseUrl, name, title, description) {
   const links = generateCollectionLinks(baseUrl, name)
   const extent = generateCollectionExtent(name)
   return Object.assign({
@@ -66,7 +66,7 @@ export function generateCollection (baseUrl, name, title, description) {
   }, extent)
 }
 
-export function generateCollections (baseUrl, layer) {
+function generateCollections (baseUrl, layer) {
   const collections = []
   // Take i18n into account if any
   const title = _.get(layer, `i18n.en.${layer.name}`, layer.name)
@@ -81,7 +81,7 @@ export function generateCollections (baseUrl, layer) {
   return collections
 }
 
-export function convertQuery (query) {
+function convertQuery (query) {
   const convertedQuery = {}
   if (query.limit) {
     convertedQuery.$limit = query.limit
@@ -98,11 +98,21 @@ export function convertQuery (query) {
   return convertedQuery
 }
 
-export function convertFeatureCollection (featureCollection) {
+function convertFeatureCollection (featureCollection) {
   featureCollection.numberMatched = featureCollection.total
   featureCollection.numberReturned = featureCollection.features.length
   delete featureCollection.total
   delete featureCollection.skip
   delete featureCollection.limit
   return featureCollection
+}
+
+module.exports = {
+  getApiFile,
+  generateCollectionExtent,
+  generateCollectionLinks,
+  generateCollection,
+  generateCollections,
+  convertQuery,
+  convertFeatureCollection
 }

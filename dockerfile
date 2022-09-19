@@ -1,4 +1,4 @@
-FROM node:16.13-bullseye-slim
+FROM node:12.16-bullseye-slim
 LABEL maintainer "<contact@kalisio.xyz>"
 
 EXPOSE 8081
