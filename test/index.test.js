@@ -179,7 +179,7 @@ describe('kfs', () => {
 
   it('get items in bbox', async () => {
     const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
-      .query({ bbox: [6.39, 48.30, 6.41, 48.32] })
+      .query({ bbox: [6.39, 48.30, 6.41, 48.32].join(',') })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
