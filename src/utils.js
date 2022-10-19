@@ -90,7 +90,8 @@ export function convertQuery (query) {
     convertedQuery.$skip = query.offset
   }
   if (query.bbox) {
-    Object.assign(convertedQuery, { south: query.bbox[1], north: query.bbox[3], east: query.bbox[0], west: query.bbox[2] })
+    const bbox = query.bbox.split(',').map(value => _.toNumber(value))
+    Object.assign(convertedQuery, { south: bbox[1], north: bbox[3], east: bbox[0], west: bbox[2] })
   }
   if (query.datetime) {
     // TODO
