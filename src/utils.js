@@ -84,10 +84,10 @@ function generateCollections (baseUrl, layer) {
 function convertQuery (query) {
   const convertedQuery = {}
   if (query.limit) {
-    convertedQuery.$limit = query.limit
+    convertedQuery.$limit = _.toNumber(query.limit)
   }
   if (query.offset) {
-    convertedQuery.$skip = query.offset
+    convertedQuery.$skip = _.toNumber(query.offset)
   }
   if (query.bbox) {
     const bbox = query.bbox.split(',').map(value => _.toNumber(value))
