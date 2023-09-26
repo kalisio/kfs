@@ -7,9 +7,9 @@
 [![Dependency Status](https://img.shields.io/david/kalisio/kfs.svg?style=flat-square)](https://david-dm.org/kalisio/kfs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Kano Features Service**
+**Kalisio Features Service**
 
-**kfs** is a lightweight service that let you distribute geospatial data from applications developed using the [Kalisio Development Kit](KDK) like [Kano](https://kalisio.github.io/kano/) using the [OGC API Features](https://ogcapi.ogc.org/features/) standard.
+**kfs** is a lightweight service that let you distribute geospatial data from applications developed using the [Kalisio Development Kit](KDK) like [Kano](https://kalisio.github.io/kano/) using the [OGC API Features](https://ogcapi.ogc.org/features/) standard (a.k.a. WFS v3).
 
 Each service-based layer from Kano will generate two or one feature collection(s) depending if probes are used or not.
 
@@ -19,6 +19,7 @@ Please refer to the [OGC API Features](https://ogcapi.ogc.org/features/) standar
 * only the Part 1 of the standard is implemented
 * only the [GeoJson encoding](https://docs.opengeospatial.org/is/17-069r4/17-069r4.html#_requirements_class_geojson) is supported
 * only a [bbox in WGS 84 CRS](https://docs.ogc.org/is/17-069r4/17-069r4.html#_parameter_bbox) is supported
+* CQL filtering is not yet supported
 
 ### /healthcheck (GET)
 
