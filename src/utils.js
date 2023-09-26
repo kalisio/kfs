@@ -1,5 +1,9 @@
 import _ from 'lodash'
+import moment from 'moment'
 import envsub from 'envsub'
+import errors from '@feathersjs/errors'
+
+const { BadRequest } = errors
 
 function getEnvsubOptions (app) {
   const baseUrl = app.get('baseUrl')
@@ -81,6 +85,27 @@ export function generateCollections (baseUrl, layer) {
   return collections
 }
 
+function convertDateTime (value) {
+  // We need to support different formats according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_datetime:
+  // <datetime>, <start>/<end>, <start>/.., ../<end>
+  // We additionnaly support <start>/<duration>, <duration>/<end>
+  // Datetime or interval ?
+  if (value.indexOf('/') === -1) {
+    // Half bounded interval
+    if ((value === '..') || (value === '')) return null
+    const datetime = moment.utc(value)
+    if (datetime.isValid()) return datetime
+    const duration = moment.duration(value)
+    // It seems invalid duration can be created so we check for something > 0
+    if (duration.isValid() && (duration.milliseconds() > 0)) return duration
+    else throw new BadRequest('Invalid datetime format')
+  } else {
+    const interval = value.split('/')
+    if (interval.length !== 2) throw new BadRequest('The datetime parameter shall have one of the following syntaxes: <datetime>, <start>/<end>, <start>/.., ../<end>')
+    return interval.map(value => convertDateTime(value))
+  }
+}
+
 export function convertQuery (query) {
   const convertedQuery = {}
   if (query.limit) {
@@ -90,11 +115,25 @@ export function convertQuery (query) {
     convertedQuery.$skip = _.toNumber(query.offset)
   }
   if (query.bbox) {
+    // TODO: we should support additionnal CRS according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_bbox
     const bbox = query.bbox.split(',').map(value => _.toNumber(value))
+    if (bbox.length < 4) throw new BadRequest('The bounding box parameter shall have at least four numbers')
     Object.assign(convertedQuery, { south: bbox[1], north: bbox[3], east: bbox[0], west: bbox[2] })
   }
   if (query.datetime) {
-    // TODO
+    const timeQuery = {
+      $sort: { time: -1 }
+    }
+    const interval = convertDateTime(query.datetime)
+    // Datetime or interval ?
+    if (!Array.isArray(interval)) {
+      _.set(timeQuery, 'time', interval.toISOString())
+    } else {
+      const [start, end] = interval
+      if (start) _.set(timeQuery, 'time.$gte', start.toISOString())
+      if (end) _.set(timeQuery, 'time.$lte', end.toISOString())
+    }
+    Object.assign(convertedQuery, timeQuery)
   }
   return convertedQuery
 }

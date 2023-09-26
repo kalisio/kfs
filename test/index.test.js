@@ -1,6 +1,7 @@
 import utility from 'util'
 import chai from 'chai'
 import chailint from 'chai-lint'
+import assert from 'assert'
 import _ from 'lodash'
 import path from 'path'
 import fs from 'fs-extra'
@@ -136,6 +137,7 @@ describe('kfs', () => {
   it('get collections', async () => {
     const response = await request.get(`${baseUrl}${apiPath}/collections`)
     expect(response.body.collections).toExist()
+    expect(response.body.collections.length).to.equal(2)
     expect(response.body.links).toExist()
   })
   // Let enough time to process
@@ -154,14 +156,15 @@ describe('kfs', () => {
   // Let enough time to process
     .timeout(5000)
 
-  it('get nonexistent collection', (done) => {
-    request.get(`${baseUrl}${apiPath}/collections/xxx`)
-      .catch(data => {
-        const error = data.response.body
-        expect(error).toExist()
-        expect(error.name).to.equal('NotFound')
-        done()
-      })
+  it('get nonexistent collection', async () => {
+    try {
+      await request.get(`${baseUrl}${apiPath}/collections/xxx`)
+      assert.fail('getting nonexistent collection should raise on error')
+    } catch (data) {
+      const error = data.response.body
+      expect(error).toExist()
+      expect(error.name).to.equal('NotFound')
+    }
   })
   // Let enough time to process
     .timeout(5000)
@@ -173,6 +176,20 @@ describe('kfs', () => {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbStations)
     expect(response.body.numberReturned).to.equal(nbStations)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items with incomplete bbox', async () => {
+    try {
+      await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+        .query({ bbox: [6.39, 48.30, 48.32].join(',') })
+      assert.fail('getting with incomplete bbox should raise on error')
+    } catch (data) {
+      const error = data.response.body
+      expect(error).toExist()
+      expect(error.name).to.equal('BadRequest')
+    }
   })
   // Let enough time to process
     .timeout(5000)
@@ -197,6 +214,93 @@ describe('kfs', () => {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbStations)
     expect(response.body.numberReturned).to.equal(10)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items at invalid time', async () => {
+    try {
+      await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+        .query({ datetime: 'xxx' })
+      assert.fail('getting at invalid time should raise on error')
+    } catch (data) {
+      const error = data.response.body
+      expect(error).toExist()
+      expect(error.name).to.equal('BadRequest')
+    }
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items at time', async () => {
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      .query({ datetime: '2018-10-22T22:00:00.000Z' })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items with invalid time interval', async () => {
+    try {
+      await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+        .query({ datetime: '2018-10-22T22:00:00.000Z/2018-10-23T08:00:00.000Z/2018-10-24T08:00:00.000Z' })
+      assert.fail('getting with invalid time interval should raise on error')
+    } catch (data) {
+      const error = data.response.body
+      expect(error).toExist()
+      expect(error.name).to.equal('BadRequest')
+    }
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items in bounded time interval', async () => {
+    // Data in range 2018-10-22T22:00:00.000Z/2018-10-24T08:00:00.000Z every hour
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      .query({ datetime: '2018-10-22T22:00:00.000Z/2018-10-24T08:00:00.000Z' })
+    // First day = 3 obs, second day 24 obs, third day 8 obs
+    const nbObservations = 3 + 24 + 8
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbObservations)
+    expect(response.body.numberReturned).to.equal(nbObservations)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items in half-bounded start time interval', async () => {
+    // Data starts at 2018-10-22T22:00:00.000Z every hour
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      .query({ datetime: '../2018-10-23T08:00:00.000Z' })
+    // First day = 3 obs, second day 8 obs
+    const nbObservations = 3 + 8
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbObservations)
+    expect(response.body.numberReturned).to.equal(nbObservations)
+    // Data ends at 2018-11-23T08:06:00.000Z every 3 mns
+    // First day = 3 obs, second day 8 obs
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items in half-bounded end time interval', async () => {
+    // Data ends at 2018-11-23T08:06:00.000Z every 3 mns
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      .query({ datetime: '2018-11-22T20:00:00.000Z/..', limit: 25 })
+    // First day = 80 obs, second day 163 obs
+    const nbObservations = 80 + 163
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbObservations)
+    expect(response.body.numberReturned).to.equal(25)
   })
   // Let enough time to process
     .timeout(5000)

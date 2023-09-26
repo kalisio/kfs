@@ -24,9 +24,9 @@ export default async function createServer () {
     await fn.call(this, this)
     return this
   }
-  app.configure(configuration())
+  await app.configure(configuration())
   // Get distributed services
-  app.configure(distribution(app.get('distribution')))
+  await app.configure(distribution(app.get('distribution')))
   // Enable CORS, security, compression, and body parsing
   app.use(cors(app.get('cors')))
   app.use(helmet(app.get('helmet')))
@@ -36,7 +36,7 @@ export default async function createServer () {
   app.use(express.urlencoded(Object.assign({ extended: true }, _.get(bodyParserConfig, 'urlencoded'))))
 
   // Set up plugins and providers
-  app.configure(rest())
+  await app.configure(rest())
 
   // Logger
   const config = app.get('logs')
@@ -58,11 +58,11 @@ export default async function createServer () {
   // Register hooks
   app.hooks(hooks)
   // Set up real-time event channels
-  app.configure(channels)
+  await app.configure(channels)
   // Configure API routes
   await app.configure(routes)
   // Configure middlewares - always has to be last
-  app.configure(middlewares)
+  await app.configure(middlewares)
 
   const port = app.get('port')
   app.logger.info('Configuring HTTP server at port ' + port.toString())

@@ -1,10 +1,12 @@
 import fs from 'fs-extra'
 import path from 'path'
 import _ from 'lodash'
+import makeDebug from 'debug'
 import errors from '@feathersjs/errors'
 import { fileURLToPath } from 'url'
 import * as utils from './utils.js'
 
+const debug = makeDebug('kfs:routes')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { NotFound, GeneralError } = errors
 
@@ -102,9 +104,11 @@ export default async function (app) {
   app.get(`${apiPath}/collections/:name/items`, async (req, res, next) => {
     try {
       const name = _.get(req, 'params.name')
-      const query = _.get(req, 'query', {})
+      let query = _.get(req, 'query', {})
       const featureService = app.service(`${apiPath}/${name}`)
-      const featureCollection = await featureService.find({ query: utils.convertQuery(query) })
+      query = utils.convertQuery(query)
+      debug(`Requesting feature collection ${name}`, query)
+      const featureCollection = await featureService.find({ query })
       res.json(utils.convertFeatureCollection(featureCollection))
     } catch (error) {
       next(error)
