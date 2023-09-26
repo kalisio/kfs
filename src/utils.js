@@ -110,15 +110,18 @@ export function convertQuery (query) {
   const convertedQuery = {}
   if (query.limit) {
     convertedQuery.$limit = _.toNumber(query.limit)
+    delete query.limit
   }
   if (query.offset) {
     convertedQuery.$skip = _.toNumber(query.offset)
+    delete query.offset
   }
   if (query.bbox) {
     // TODO: we should support additionnal CRS according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_bbox
     const bbox = query.bbox.split(',').map(value => _.toNumber(value))
     if (bbox.length < 4) throw new BadRequest('The bounding box parameter shall have at least four numbers')
     Object.assign(convertedQuery, { south: bbox[1], north: bbox[3], east: bbox[0], west: bbox[2] })
+    delete query.bbox
   }
   if (query.datetime) {
     const timeQuery = {
@@ -134,7 +137,22 @@ export function convertQuery (query) {
       if (end) _.set(timeQuery, 'time.$lte', end.toISOString())
     }
     Object.assign(convertedQuery, timeQuery)
+    delete query.datetime
   }
+  // Any other query parameter is assumed to be a filter on feature properties
+  _.forOwn(query, (value, key) => {
+    // Add implicit properties object
+    key = `properties.${key}`
+    // Try to automatically convert to target types
+    const lowerCaseValue = _.lowerCase(value)
+    const date = moment(value, moment.ISO_8601)
+    const number = _.toNumber(value)
+    const boolean = (lowerCaseValue === 'true') || (lowerCaseValue === 'false')
+    if (date.isValid()) convertedQuery[key] = date.toISOString()
+    else if (!Number.isNaN(number)) convertedQuery[key] = number
+    else if (boolean) convertedQuery[key] = lowerCaseValue === 'true'
+    else convertedQuery[key] = value
+  })
   return convertedQuery
 }
 

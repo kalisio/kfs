@@ -18,7 +18,8 @@ const { util, expect } = chai
 describe('kfs', () => {
   let app, server, baseUrl, apiPath,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
-    nbStations
+    nbStations, nbObservations
+  const nbPerPage = 500
 
   before(async () => {
     chailint(chai, util)
@@ -83,7 +84,8 @@ describe('kfs', () => {
     expect(hubeauLayer.probeService === 'hubeau-stations').beTrue()
     await createFeaturesService.call(kapp, {
       collection: hubeauLayer.probeService,
-      featureId: hubeauLayer.featureId
+      featureId: hubeauLayer.featureId,
+      paginate: { default: nbPerPage }
     })
     hubeauStationsService = kapp.getService(hubeauLayer.probeService)
     expect(hubeauStationsService).toExist()
@@ -102,12 +104,14 @@ describe('kfs', () => {
     expect(hubeauLayer.service === 'hubeau-observations').beTrue()
     await createFeaturesService.call(kapp, {
       collection: hubeauLayer.service,
-      featureId: hubeauLayer.featureId
+      featureId: hubeauLayer.featureId,
+      paginate: { default: nbPerPage }
     })
     hubeauObsService = kapp.getService(hubeauLayer.service)
     expect(hubeauObsService).toExist()
     // Feed the collection
     const observations = fs.readJsonSync(path.join(__dirname, 'data/hubeau.observations.json'))
+    nbObservations = observations.length
     await hubeauObsService.create(observations)
   })
   // Let enough time to process
@@ -175,7 +179,31 @@ describe('kfs', () => {
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbStations)
-    expect(response.body.numberReturned).to.equal(nbStations)
+    expect(response.body.numberReturned).to.equal(nbStations < nbPerPage ? nbStations : nbPerPage)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items with filtering on string property', async () => {
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      .query({ gml_id: 'StationHydro_FXX_shp.A282000101' })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbObservations)
+    expect(response.body.numberReturned).to.equal(nbObservations < nbPerPage ? nbObservations : nbPerPage)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items with filtering on number property', async () => {
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      .query({ H: 0.63 })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
   })
   // Let enough time to process
     .timeout(5000)
@@ -268,7 +296,7 @@ describe('kfs', () => {
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbObservations)
-    expect(response.body.numberReturned).to.equal(nbObservations)
+    expect(response.body.numberReturned).to.equal(nbObservations < nbPerPage ? nbObservations : nbPerPage)
   })
   // Let enough time to process
     .timeout(5000)
@@ -283,7 +311,7 @@ describe('kfs', () => {
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbObservations)
-    expect(response.body.numberReturned).to.equal(nbObservations)
+    expect(response.body.numberReturned).to.equal(nbObservations < nbPerPage ? nbObservations : nbPerPage)
     // Data ends at 2018-11-23T08:06:00.000Z every 3 mns
     // First day = 3 obs, second day 8 obs
   })
@@ -293,14 +321,27 @@ describe('kfs', () => {
   it('get items in half-bounded end time interval', async () => {
     // Data ends at 2018-11-23T08:06:00.000Z every 3 mns
     const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
-      .query({ datetime: '2018-11-22T20:00:00.000Z/..', limit: 25 })
+      .query({ datetime: '2018-11-22T20:00:00.000Z/..' })
     // First day = 80 obs, second day 163 obs
     const nbObservations = 80 + 163
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbObservations)
-    expect(response.body.numberReturned).to.equal(25)
+    expect(response.body.numberReturned).to.equal(nbObservations < nbPerPage ? nbObservations : nbPerPage)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items with combined filters', async () => {
+    // Data ends at 2018-11-23T08:06:00.000Z every 3 mns with some values higher than 0.33
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      .query({ H: 0.43, datetime: '2018-11-22T20:00:00.000Z/..', bbox: [7.42, 48.63, 7.43, 48.64].join(','), limit: 3 })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(4)
+    expect(response.body.numberReturned).to.equal(3)
   })
   // Let enough time to process
     .timeout(5000)
