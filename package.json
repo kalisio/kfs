@@ -40,11 +40,11 @@
     ]
   },
   "dependencies": {
-    "@feathersjs/errors": "^5.0.0-pre.28",
-    "@feathersjs/express": "^5.0.0-pre.28",
-    "@feathersjs/feathers": "^5.0.0-pre.28",
-    "@feathersjs/schema": "5.0.0-pre.28",
-    "@kalisio/feathers-distributed": "^2.0.2",
+    "@feathersjs/errors": "^5.0.5",
+    "@feathersjs/express": "^5.0.5",
+    "@feathersjs/feathers": "^5.0.5",
+    "@feathersjs/schema": "^5.0.5",
+    "@kalisio/feathers-distributed": "^2.2.1",
     "compression": "^1.6.2",
     "containerized": "^1.0.2",
     "cors": "^2.8.1",
@@ -61,7 +61,7 @@
     "winston-daily-rotate-file": "^3.10.0"
   },
   "devDependencies": {
-    "@feathersjs/memory": "^5.0.0-pre.28",
+    "@feathersjs/memory": "^5.0.5",
     "@kalisio/kdk": "^2.1.2",
     "c8": "^7.11.0",
     "chai": "^4.3.6",
