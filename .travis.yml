@@ -1,3 +1,7 @@
+# Using latest ubuntu as of now because using the default one (xenial)
+# the build fails in docker while running yarn install in the builder ...
+dist: jammy
+
 notifications:
   email: false
   slack:
