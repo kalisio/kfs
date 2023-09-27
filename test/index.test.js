@@ -16,10 +16,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { util, expect } = chai
 
 // Test suite based on using the catalog service or not
-function runTests(catalog) {
+function runTests (catalog) {
   let app, server, baseUrl, apiPath,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
-    nbStations, nbObservations
+    nbStations, nbObservations, feature
   const nbPerPage = 500
 
   it('initialize the remote app', async () => {
@@ -74,9 +74,10 @@ function runTests(catalog) {
     hubeauStationsService = kapp.getService(hubeauLayer.probeService)
     expect(hubeauStationsService).toExist()
     // Feed the collection
-    const stations = fs.readJsonSync(path.join(__dirname, 'data/hubeau.stations.json')).features
+    let stations = fs.readJsonSync(path.join(__dirname, 'data/hubeau.stations.json')).features
     nbStations = stations.length
-    await hubeauStationsService.create(stations)
+    stations = await hubeauStationsService.create(stations)
+    feature = stations[Math.floor(Math.random() * nbStations)]
   })
   // Let enough time to process
     .timeout(5000)
@@ -117,6 +118,11 @@ function runTests(catalog) {
   it('get landing page', async () => {
     const response = await request.get(`${baseUrl}${apiPath}`)
     expect(response.body.links).toExist()
+    expect(response.body.links.length).to.equal(4)
+    response.body.links.forEach(link => {
+      expect(link.href).toExist()
+      expect(link.rel).toExist()
+    })
   })
   // Let enough time to process
     .timeout(5000)
@@ -140,6 +146,11 @@ function runTests(catalog) {
     expect(response.body.collections).toExist()
     expect(response.body.collections.length).to.equal(2)
     expect(response.body.links).toExist()
+    expect(response.body.links.length).to.equal(1)
+    response.body.links.forEach(link => {
+      expect(link.href).toExist()
+      expect(link.rel).toExist()
+    })
   })
   // Let enough time to process
     .timeout(5000)
@@ -154,6 +165,11 @@ function runTests(catalog) {
     // When not using layers we don't have this information
     if (catalog) expect(response.body.description).toExist()
     expect(response.body.links).toExist()
+    expect(response.body.links.length).to.equal(2)
+    response.body.links.forEach(link => {
+      expect(link.href).toExist()
+      expect(link.rel).toExist()
+    })
   })
   // Let enough time to process
     .timeout(5000)
@@ -178,6 +194,33 @@ function runTests(catalog) {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbStations)
     expect(response.body.numberReturned).to.equal(nbStations < nbPerPage ? nbStations : nbPerPage)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get nonexistent item', async () => {
+    try {
+      await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items/xxx`)
+      assert.fail('getting nonexistent item should raise on error')
+    } catch (data) {
+      const error = data.response.body
+      expect(error).toExist()
+      expect(error.name).to.equal('NotFound')
+    }
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get item', async () => {
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items/${feature._id}`)
+    expect(response.body._id).toExist()
+    expect(response.body.properties).toExist()
+    expect(response.body.links).toExist()
+    expect(response.body.links.length).to.equal(2)
+    response.body.links.forEach(link => {
+      expect(link.href).toExist()
+      expect(link.rel).toExist()
+    })
   })
   // Let enough time to process
     .timeout(5000)
@@ -356,7 +399,6 @@ function runTests(catalog) {
   })
 }
 describe('kfs', () => {
-  
   before(async () => {
     chailint(chai, util)
   })

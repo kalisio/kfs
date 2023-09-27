@@ -3,14 +3,12 @@ import path from 'path'
 import _ from 'lodash'
 import makeDebug from 'debug'
 import { stripSlashes } from '@feathersjs/commons'
-import feathers from '@feathersjs/feathers'
 import errors from '@feathersjs/errors'
 import { fileURLToPath } from 'url'
 import * as utils from './utils.js'
 
 const debug = makeDebug('kfs:routes')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const { getServiceOptions } = feathers
 const { NotFound } = errors
 
 export default async function (app) {
@@ -66,12 +64,13 @@ export default async function (app) {
         const service = app.service(path)
         // We do not expose local internal services
         if (!service.remote) continue
-        const options = getServiceOptions(service)
         const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
         // Return virtual "layer" definition used to expose service
-        if (name === serviceName) return {
-          name: serviceName,
-          service: serviceName,
+        if (name === serviceName) {
+          return {
+            name: serviceName,
+            service: serviceName
+          }
         }
       }
     }
@@ -88,7 +87,7 @@ export default async function (app) {
     let collections = []
     // Try to use any catalog service available
     if (app.services[stripSlashes(`${apiPath}/catalog`)]) {
-      debug(`Seeking for layers in catalog`)
+      debug('Seeking for layers in catalog')
       const catalogService = app.service(`${apiPath}/catalog`)
       // Retrieve service-based layers
       const layers = await catalogService.find({ query: { service: { $exists: true } }, paginate: false })
@@ -99,25 +98,24 @@ export default async function (app) {
     }
     // Otherwise try to retrieve available services as if they are
     // authorised in the distribution config it should be exposed
-    debug(`Seeking for services in app`)
+    debug('Seeking for services in app')
     const servicePaths = Object.keys(app.services)
     servicePaths.forEach(path => {
       const service = app.service(path)
       // Do not expose catalog or local internal services
       if (!service.remote || (path === stripSlashes(`${apiPath}/catalog`))) return
-      const options = getServiceOptions(service)
       const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
       // Check if already exposed as a layer
       if (_.find(collections, { name: serviceName })) return
       // Create virtual "layer" definition otherwise to expose service
       collections = collections.concat(utils.generateCollections(baseUrl, {
         name: serviceName,
-        service: serviceName,
+        service: serviceName
       }))
     })
 
     debug('Getting list of collections', _.map(collections, 'name'))
-    
+
     res.json({
       collections,
       links: [{
@@ -157,7 +155,6 @@ export default async function (app) {
       const name = _.get(req, 'params.name')
       const query = _.get(req, 'query', {})
       debug(`Getting features for collection ${name}`)
-      const featureService = app.service(`${apiPath}/${name}`)
       const features = await utils.getFeaturesFromService(app, `${apiPath}/${name}`, query)
       res.json(features)
     } catch (error) {
@@ -171,7 +168,7 @@ export default async function (app) {
       const id = _.get(req, 'params.id')
       debug(`Getting feature ${id} from collection ${name} and context ${context}`)
       const feature = await utils.getFeatureFromService(app, `${apiPath}/${context}/${name}`, id)
-      res.json(feature)
+      res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, `${context}/${name}`, feature) }))
     } catch (error) {
       next(error)
     }
@@ -182,7 +179,7 @@ export default async function (app) {
       const id = _.get(req, 'params.id')
       debug(`Getting feature ${id} from collection ${name}`)
       const feature = await utils.getFeatureFromService(app, `${apiPath}/${name}`, id)
-      res.json(feature)
+      res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, name, feature) }))
     } catch (error) {
       next(error)
     }

@@ -50,13 +50,13 @@ export function generateCollectionLinks (baseUrl, name) {
     href: `${baseUrl}/collections/${name}/items?f=application/json`,
     rel: 'items',
     type: 'application/geo+json',
-    title: 'The layer features as GeoJSON'
+    title: 'The collection features as GeoJSON'
   },
   {
     href: `${baseUrl}/collections/${name}?f=application/json`,
     rel: 'data',
     type: 'application/json',
-    title: 'The layer as JSON'
+    title: 'The collection as JSON'
   }]
 }
 
@@ -176,10 +176,29 @@ export async function getFeaturesFromService (app, servicePath, query) {
   return convertFeatureCollection(featureCollection)
 }
 
+export function generateFeatureLinks (baseUrl, name, feature) {
+  return [{
+    href: `${baseUrl}/collections/${name}/items/${feature._id}?f=application/json`,
+    rel: 'self',
+    type: 'application/geo+json',
+    title: 'The feature as GeoJSON'
+  },
+  {
+    href: `${baseUrl}/collections/${name}?f=application/json`,
+    rel: 'collection',
+    type: 'application/json',
+    title: 'The collection as JSON'
+  }]
+}
+
+export function convertFeature (feature) {
+  // Nothing specific todo now on
+  return feature
+}
+
 export async function getFeatureFromService (app, servicePath, id) {
   debug(`Requesting feature on path ${servicePath}`, id)
   const featureService = app.service(servicePath)
   const feature = await featureService.get(id)
   return convertFeature(feature)
 }
-
