@@ -13,8 +13,8 @@ config.distribution.cote = {
   nodeTimeout: 5000,
   masterTimeout: 6000
 }
-config.distribution.publicationDelay = 5000
-config.distribution.remoteServices = (service) => (service.key === 'kfs-test'),
+config.distribution.publicationDelay = 3000
+config.distribution.remoteServices = (service) => (service.key === 'kfs-test')
 // This is for KDK test app
 config.db = {
   adapter: 'mongodb',

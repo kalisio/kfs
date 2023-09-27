@@ -2,13 +2,16 @@ import fs from 'fs-extra'
 import path from 'path'
 import _ from 'lodash'
 import makeDebug from 'debug'
+import { stripSlashes } from '@feathersjs/commons'
+import feathers from '@feathersjs/feathers'
 import errors from '@feathersjs/errors'
 import { fileURLToPath } from 'url'
 import * as utils from './utils.js'
 
 const debug = makeDebug('kfs:routes')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const { NotFound, GeneralError } = errors
+const { getServiceOptions } = feathers
+const { NotFound } = errors
 
 export default async function (app) {
   const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
@@ -47,14 +50,32 @@ export default async function (app) {
 
   // Collections
   async function getLayerForCollection (name) {
-    const catalogService = app.service(`${apiPath}/catalog`)
-    if (catalogService) {
+    // Try to use any catalog service available
+    if (app.services[stripSlashes(`${apiPath}/catalog`)]) {
+      debug(`Seeking for layer ${name} in catalog`)
+      const catalogService = app.service(`${apiPath}/catalog`)
       const layers = await catalogService.find({ query: { $or: [{ service: name }, { probeService: name }] }, paginate: false })
-      if (layers.length === 0) throw new NotFound(`Cannot find collection ${name}`)
-      return layers[0]
+      if (layers.length > 0) return layers[0]
     } else {
-      throw new GeneralError(`Cannot find collection ${name} as catalog is currently unavailable`)
+      // Otherwise try to retrieve it from available services as if they are
+      // authorised in the distribution config it should be exposed
+      debug(`Seeking for service ${name} in app`)
+      const servicePaths = Object.keys(app.services)
+      for (let i = 0; i < servicePaths.length; i++) {
+        const path = servicePaths[i]
+        const service = app.service(path)
+        // We do not expose local internal services
+        if (!service.remote) continue
+        const options = getServiceOptions(service)
+        const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
+        // Return virtual "layer" definition used to expose service
+        if (name === serviceName) return {
+          name: serviceName,
+          service: serviceName,
+        }
+      }
     }
+    throw new NotFound(`Cannot find collection ${name}`)
   }
   async function getCollection (name) {
     const layer = await getLayerForCollection(name)
@@ -64,36 +85,54 @@ export default async function (app) {
   }
 
   app.get(`${apiPath}/collections`, async (req, res, next) => {
-    try {
-      let collections = []
+    let collections = []
+    // Try to use any catalog service available
+    if (app.services[stripSlashes(`${apiPath}/catalog`)]) {
+      debug(`Seeking for layers in catalog`)
       const catalogService = app.service(`${apiPath}/catalog`)
-      if (catalogService) {
-        // Retrieve service-based layers
-        const layers = await catalogService.find({ query: { service: { $exists: true } }, paginate: false })
-        layers.forEach(layer => {
-          // Create a collection for feature service(s)
-          collections = collections.concat(utils.generateCollections(baseUrl, layer))
-        })
-      } else {
-        throw new GeneralError('Cannot list collections as catalog is currently unavailable')
-      }
-      res.json({
-        collections,
-        links: [{
-          href: `${baseUrl}/collections?f=application/json`,
-          rel: 'self',
-          type: 'application/json',
-          title: 'This document'
-        }]
+      // Retrieve service-based layers
+      const layers = await catalogService.find({ query: { service: { $exists: true } }, paginate: false })
+      layers.forEach(layer => {
+        // Create a collection for feature service(s)
+        collections = collections.concat(utils.generateCollections(baseUrl, layer))
       })
-    } catch (error) {
-      next(error)
     }
+    // Otherwise try to retrieve available services as if they are
+    // authorised in the distribution config it should be exposed
+    debug(`Seeking for services in app`)
+    const servicePaths = Object.keys(app.services)
+    servicePaths.forEach(path => {
+      const service = app.service(path)
+      // Do not expose catalog or local internal services
+      if (!service.remote || (path === stripSlashes(`${apiPath}/catalog`))) return
+      const options = getServiceOptions(service)
+      const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
+      // Check if already exposed as a layer
+      if (_.find(collections, { name: serviceName })) return
+      // Create virtual "layer" definition otherwise to expose service
+      collections = collections.concat(utils.generateCollections(baseUrl, {
+        name: serviceName,
+        service: serviceName,
+      }))
+    })
+
+    debug('Getting list of collections', _.map(collections, 'name'))
+    
+    res.json({
+      collections,
+      links: [{
+        href: `${baseUrl}/collections?f=application/json`,
+        rel: 'self',
+        type: 'application/json',
+        title: 'This document'
+      }]
+    })
   })
   app.get(`${apiPath}/collections/:name`, async (req, res, next) => {
     try {
       const name = _.get(req, 'params.name')
       const collection = await getCollection(name)
+      debug('Getting collection', collection)
       res.json(collection)
     } catch (error) {
       next(error)
@@ -101,15 +140,38 @@ export default async function (app) {
   })
 
   // Collection features
+  app.get(`${apiPath}/collections/:context/:name/items`, async (req, res, next) => {
+    try {
+      const context = _.get(req, 'params.context')
+      const name = _.get(req, 'params.name')
+      const query = _.get(req, 'query', {})
+      debug(`Getting features for collection ${name} and context ${context}`)
+      const features = await utils.getFeaturesFromService(app, `${apiPath}/${context}/${name}`, query)
+      res.json(features)
+    } catch (error) {
+      next(error)
+    }
+  })
   app.get(`${apiPath}/collections/:name/items`, async (req, res, next) => {
     try {
       const name = _.get(req, 'params.name')
-      let query = _.get(req, 'query', {})
+      const query = _.get(req, 'query', {})
+      debug(`Getting features for collection ${name}`)
       const featureService = app.service(`${apiPath}/${name}`)
-      query = utils.convertQuery(query)
-      debug(`Requesting feature collection ${name}`, query)
-      const featureCollection = await featureService.find({ query })
-      res.json(utils.convertFeatureCollection(featureCollection))
+      const features = await utils.getFeaturesFromService(app, `${apiPath}/${name}`, query)
+      res.json(features)
+    } catch (error) {
+      next(error)
+    }
+  })
+  app.get(`${apiPath}/collections/:context/:name/items/:id`, async (req, res, next) => {
+    try {
+      const context = _.get(req, 'params.context')
+      const name = _.get(req, 'params.name')
+      const id = _.get(req, 'params.id')
+      debug(`Getting feature ${id} from collection ${name} and context ${context}`)
+      const feature = await utils.getFeatureFromService(app, `${apiPath}/${context}/${name}`, id)
+      res.json(feature)
     } catch (error) {
       next(error)
     }
@@ -118,8 +180,8 @@ export default async function (app) {
     try {
       const name = _.get(req, 'params.name')
       const id = _.get(req, 'params.id')
-      const featureService = app.service(`${apiPath}/${name}`)
-      const feature = await featureService.get(id)
+      debug(`Getting feature ${id} from collection ${name}`)
+      const feature = await utils.getFeatureFromService(app, `${apiPath}/${name}`, id)
       res.json(feature)
     } catch (error) {
       next(error)

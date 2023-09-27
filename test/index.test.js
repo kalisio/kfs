@@ -15,24 +15,17 @@ import createServer from '../src/main.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { util, expect } = chai
 
-describe('kfs', () => {
+// Test suite based on using the catalog service or not
+function runTests(catalog) {
   let app, server, baseUrl, apiPath,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
     nbStations, nbObservations
   const nbPerPage = 500
 
-  before(async () => {
-    chailint(chai, util)
-  })
-
-  it('is ES module compatible', () => {
-    expect(typeof createServer).to.equal('function')
-  })
-
   it('initialize the remote app', async () => {
     kapp = kdk()
     // Distribute services
-    kapp.configure(distribution({
+    await kapp.configure(distribution({
       // Use cote defaults to speedup tests
       cote: {
         helloInterval: 2000,
@@ -40,38 +33,29 @@ describe('kfs', () => {
         nodeTimeout: 5000,
         masterTimeout: 6000
       },
-      publicationDelay: 5000,
-      key: 'kfs-test'
+      publicationDelay: 3000,
+      key: 'kfs-test',
+      // Distribute only the test services
+      services: (service) => service.path.includes('hubeau') ||
+                (catalog && service.path.includes('catalog'))
     }))
     await kapp.db.connect()
     // Create a global catalog service
-    await createCatalogService.call(kapp)
-    catalogService = kapp.getService('catalog')
-    expect(catalogService).toExist()
-    // Wait long enough to be sure distribution is up
-    await utility.promisify(setTimeout)(7000)
+    if (catalog) {
+      await createCatalogService.call(kapp)
+      catalogService = kapp.getService('catalog')
+      expect(catalogService).toExist()
+    }
   })
   // Let enough time to process
-    .timeout(10000)
+    .timeout(5000)
 
-  it('initialize the app', async () => {
-    server = await createServer()
-    expect(server).toExist()
-    app = server.app
-    expect(app).toExist()
-    baseUrl = app.get('baseUrl')
-    apiPath = app.get('apiPath')
-    // Wait long enough to be sure distribution is up
-    await utility.promisify(setTimeout)(7000)
-  })
-  // Let enough time to process
-    .timeout(10000)
-
-  it('registers the default layers in catalog', async () => {
+  it('registers the default layers', async () => {
     const layers = await fs.readJson(path.join(__dirname, 'config/layers.json'))
     expect(layers.length > 0)
     // Create layers
-    defaultLayers = await catalogService.create(layers)
+    if (catalog) defaultLayers = await catalogService.create(layers)
+    else defaultLayers = layers
     // Single layer case
     if (!Array.isArray(defaultLayers)) defaultLayers = [defaultLayers]
     expect(defaultLayers.length > 0)
@@ -117,6 +101,19 @@ describe('kfs', () => {
   // Let enough time to process
     .timeout(5000)
 
+  it('initialize the app', async () => {
+    server = await createServer()
+    expect(server).toExist()
+    app = server.app
+    expect(app).toExist()
+    baseUrl = app.get('baseUrl')
+    apiPath = app.get('apiPath')
+    // Wait long enough to be sure distribution is up
+    await utility.promisify(setTimeout)(10000)
+  })
+  // Let enough time to process
+    .timeout(15000)
+
   it('get landing page', async () => {
     const response = await request.get(`${baseUrl}${apiPath}`)
     expect(response.body.links).toExist()
@@ -154,7 +151,8 @@ describe('kfs', () => {
     expect(response.body.itemType).toExist()
     expect(response.body.itemType).to.equal('feature')
     expect(response.body.title).toExist()
-    expect(response.body.description).toExist()
+    // When not using layers we don't have this information
+    if (catalog) expect(response.body.description).toExist()
     expect(response.body.links).toExist()
   })
   // Let enough time to process
@@ -347,13 +345,27 @@ describe('kfs', () => {
     .timeout(5000)
 
   // Cleanup
-  after(async () => {
+  it('cleanup', async () => {
     if (server) await server.close()
     finalize(kapp)
     fs.emptyDirSync(path.join(__dirname, 'logs'))
-    await catalogService.Model.drop()
+    if (catalog) await catalogService.Model.drop()
     await hubeauStationsService.Model.drop()
     await hubeauObsService.Model.drop()
     await kapp.db.disconnect()
   })
+}
+describe('kfs', () => {
+  
+  before(async () => {
+    chailint(chai, util)
+  })
+
+  it('is ES module compatible', () => {
+    expect(typeof createServer).to.equal('function')
+  })
+
+  // Run test with and without catalog
+  runTests(false)
+  runTests(true)
 })

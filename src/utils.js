@@ -1,8 +1,10 @@
 import _ from 'lodash'
 import moment from 'moment'
 import envsub from 'envsub'
+import makeDebug from 'debug'
 import errors from '@feathersjs/errors'
 
+const debug = makeDebug('kfs:utils')
 const { BadRequest } = errors
 
 function getEnvsubOptions (app) {
@@ -71,6 +73,7 @@ export function generateCollection (baseUrl, name, title, description) {
 }
 
 export function generateCollections (baseUrl, layer) {
+  debug('Generating collections for layer', layer)
   const collections = []
   // Take i18n into account if any
   const title = _.get(layer, `i18n.en.${layer.name}`, layer.name)
@@ -164,3 +167,19 @@ export function convertFeatureCollection (featureCollection) {
   delete featureCollection.limit
   return featureCollection
 }
+
+export async function getFeaturesFromService (app, servicePath, query) {
+  const featureService = app.service(servicePath)
+  query = convertQuery(query)
+  debug(`Requesting feature collection on path ${servicePath}`, query)
+  const featureCollection = await featureService.find({ query })
+  return convertFeatureCollection(featureCollection)
+}
+
+export async function getFeatureFromService (app, servicePath, id) {
+  debug(`Requesting feature on path ${servicePath}`, id)
+  const featureService = app.service(servicePath)
+  const feature = await featureService.get(id)
+  return convertFeature(feature)
+}
+

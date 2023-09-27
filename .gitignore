@@ -18,4 +18,5 @@ coverage
 # Dependency directories
 node_modules/
 
-
+# Local config
+config/local.cjs
