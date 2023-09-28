@@ -30,18 +30,46 @@ export async function getApiFile (app, file) {
   return JSON.parse(result.outputContents)
 }
 
-export function generateCollectionExtent (name) {
-  // TODO: compute spatial extent based on data
+export function generateCollectionExtent (layer) {
+  // TODO: compute spatial extent based on data ?
   return {
-    extent: {
-      spatial: [-180, -90, 180, 90],
-      crs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
-    },
-    crs: [
-      'http://www.opengis.net/def/crs/OGC/1.3/CRS84',
-      'http://www.opengis.net/def/crs/OGC/1.3/4326'
-    ],
-    storageCrs: 'http://www.opengis.net/def/crs/OGC/1.3/4326'
+    extent: Object.assign({
+      spatial: {
+        bbox: layer.bbox || [-180, -90, 180, 90],
+        crs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
+      },
+    }, generateCollectionTemporal(layer))
+  }
+}
+
+export function generateCollectionTemporal (layer) {
+  const now = moment()
+  // TODO: compute time extent based on data ?
+  let from = layer.from
+  if (from) {
+    from = moment.duration(from)
+    // Depending on the duration format we might have negative or positive values
+    from = (from.asMilliseconds() > 0
+      ? now.clone().subtract(from)
+      : now.clone().add(from))
+  }
+  let to = layer.to
+  if (to) {
+    to = moment.duration(to)
+    // Depending on the duration format we might have negative or positive values
+    to = (to.asMilliseconds() > 0
+      ? now.clone().subtract(to)
+      : now.clone().add(to))
+  }
+  if (!from && !to) return {}
+  return {
+    temporal: {
+      interval: [[
+        from ? from.toISOString() : null,
+        to ? to.toISOString() : null
+      ]],
+      trs: 'http://www.opengis.net/def/uom/ISO-8601/0/Gregorian'
+    }
   }
 }
 
@@ -62,14 +90,17 @@ export function generateCollectionLinks (baseUrl, name) {
 
 export function generateCollection (baseUrl, name, title, description) {
   const links = generateCollectionLinks(baseUrl, name)
-  const extent = generateCollectionExtent(name)
-  return Object.assign({
-    name,
+  return {
+    id: name,
     title,
     description,
     itemType: 'feature',
-    links
-  }, extent)
+    links,
+    crs: [
+      'http://www.opengis.net/def/crs/OGC/1.3/CRS84',
+      'http://www.opengis.net/def/crs/OGC/1.3/4326'
+    ]
+  }
 }
 
 export function generateCollections (baseUrl, layer) {
@@ -78,12 +109,13 @@ export function generateCollections (baseUrl, layer) {
   // Take i18n into account if any
   const title = _.get(layer, `i18n.en.${layer.name}`, layer.name)
   const description = _.get(layer, `i18n.en.${layer.description}`, layer.description)
+  const extent = generateCollectionExtent(layer)
   // Probe service as well ?
   if (layer.probeService) {
-    collections.push(generateCollection(baseUrl, layer.service, title + ' (measures)', description))
-    collections.push(generateCollection(baseUrl, layer.probeService, title + ' (stations)', description))
+    collections.push(Object.assign(generateCollection(baseUrl, layer.service, title + ' (measures)', description), extent))
+    collections.push(Object.assign(generateCollection(baseUrl, layer.probeService, title + ' (stations)', description), extent))
   } else {
-    collections.push(generateCollection(baseUrl, layer.service, title, description))
+    collections.push(Object.assign(generateCollection(baseUrl, layer.service, title, description), extent))
   }
   return collections
 }

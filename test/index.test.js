@@ -157,13 +157,27 @@ function runTests (catalog) {
 
   it('get collection', async () => {
     const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations`)
-    expect(response.body.name).toExist()
-    expect(response.body.name).to.equal('hubeau-stations')
+    expect(response.body.id).toExist()
+    expect(response.body.id).to.equal('hubeau-stations')
     expect(response.body.itemType).toExist()
     expect(response.body.itemType).to.equal('feature')
     expect(response.body.title).toExist()
     // When not using layers we don't have this information
-    if (catalog) expect(response.body.description).toExist()
+    if (catalog) {
+      expect(response.body.description).toExist()
+      expect(response.body.extent).toExist()
+      expect(response.body.extent.spatial).toExist()
+      expect(response.body.extent.spatial.bbox).toExist()
+      expect(response.body.extent.spatial.crs).toExist()
+      expect(response.body.extent.temporal).toExist()
+      expect(response.body.extent.temporal.interval).toExist()
+      expect(response.body.extent.temporal.interval.length).to.equal(1)
+      expect(response.body.extent.temporal.interval[0].length).to.equal(2)
+      expect(response.body.extent.temporal.interval[0][0]).not.to.equal(null)
+      expect(response.body.extent.temporal.interval[0][1]).not.to.equal(null)
+      expect(response.body.extent.temporal.trs).toExist()
+    }
+    expect(response.body.crs).toExist()
     expect(response.body.links).toExist()
     expect(response.body.links.length).to.equal(2)
     response.body.links.forEach(link => {

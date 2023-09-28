@@ -80,7 +80,7 @@ export default async function (app) {
     const layer = await getLayerForCollection(name)
     const collections = utils.generateCollections(baseUrl, layer)
     // Select the right collection
-    return _.find(collections, { name })
+    return _.find(collections, { id: name })
   }
 
   app.get(`${apiPath}/collections`, async (req, res, next) => {
@@ -106,7 +106,7 @@ export default async function (app) {
       if (!service.remote || (path === stripSlashes(`${apiPath}/catalog`))) return
       const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
       // Check if already exposed as a layer
-      if (_.find(collections, { name: serviceName })) return
+      if (_.find(collections, { id: serviceName })) return
       // Create virtual "layer" definition otherwise to expose service
       collections = collections.concat(utils.generateCollections(baseUrl, {
         name: serviceName,
@@ -114,7 +114,7 @@ export default async function (app) {
       }))
     })
 
-    debug('Getting list of collections', _.map(collections, 'name'))
+    debug('Getting list of collections', _.map(collections, 'id'))
 
     res.json({
       collections,

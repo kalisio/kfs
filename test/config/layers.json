@@ -19,7 +19,10 @@
     "type" : "OverlayLayer",
     "service": "hubeau-observations",
     "probeService": "hubeau-stations",
-    "featureId": "code_station"
+    "featureId": "code_station",
+    "from": "P-7D",
+    "to": "PT-10M",
+    "bbox": [2.05338918702, -54.5247541978, 9.56001631027, 51.1485061713]
   }
 ]
 
