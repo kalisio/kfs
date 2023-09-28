@@ -202,6 +202,8 @@ export function convertFeatureCollection (featureCollection) {
 
 export async function getFeaturesFromService (app, servicePath, query) {
   const featureService = app.service(servicePath)
+  // Any query parameter is assumed to be a filter on feature properties except reserved ones
+  query = _.omit(query, app.get('reservedQueryParameters'))
   query = convertQuery(query)
   debug(`Requesting feature collection on path ${servicePath}`, query)
   const featureCollection = await featureService.find({ query })

@@ -251,6 +251,18 @@ function runTests (catalog) {
   // Let enough time to process
     .timeout(5000)
 
+  it('get items without filtering on a reserved query parameter', async () => {
+    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+      .query({ jwt: 'xxx' })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStations)
+    expect(response.body.numberReturned).to.equal(nbStations < nbPerPage ? nbStations : nbPerPage)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
   it('get items with filtering on number property', async () => {
     const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
       .query({ H: 0.63 })

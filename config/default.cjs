@@ -16,6 +16,8 @@ module.exports = {
     definition: path.join(__dirname, 'api-definition.json'),
     conformance: path.join(__dirname, 'api-conformance.json')
   },
+  // List of tokens not to be taken into account for feature filtering
+  reservedQueryParameters: ['jwt', 'token'],
   logs: {
     Console: {
       format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
