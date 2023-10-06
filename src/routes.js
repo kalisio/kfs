@@ -47,11 +47,13 @@ export default async function (app) {
   })
 
   // Collections
-  async function getLayerForCollection (name) {
+  async function getLayerForCollection (name, context) {
     // Try to use any catalog service available
-    if (app.services[stripSlashes(`${apiPath}/catalog`)]) {
+    const catalogPath = stripSlashes((context ? `${apiPath}/${context}/catalog` : `${apiPath}/catalog`))
+    const servicePath = stripSlashes((context ? `${apiPath}/${context}/${name}` : `${apiPath}/${name}`))
+    if (app.services[catalogPath]) {
       debug(`Seeking for layer ${name} in catalog`)
-      const catalogService = app.service(`${apiPath}/catalog`)
+      const catalogService = app.service(catalogPath)
       const layers = await catalogService.find({ query: { $or: [{ service: name }, { probeService: name }] }, paginate: false })
       if (layers.length > 0) return layers[0]
     } else {
@@ -64,20 +66,19 @@ export default async function (app) {
         const service = app.service(path)
         // We do not expose local internal services
         if (!service.remote) continue
-        const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
         // Return virtual "layer" definition used to expose service
-        if (name === serviceName) {
+        if (path === servicePath) {
           return {
-            name: serviceName,
-            service: serviceName
+            name: (context ? `${context}/${name}` : `${name}`),
+            service: (context ? `${context}/${name}` : `${name}`)
           }
         }
       }
     }
     throw new NotFound(`Cannot find collection ${name}`)
   }
-  async function getCollection (name) {
-    const layer = await getLayerForCollection(name)
+  async function getCollection (name, context) {
+    const layer = await getLayerForCollection(name, context)
     const collections = utils.generateCollections(baseUrl, layer)
     // Select the right collection
     return _.find(collections, { id: name })
@@ -126,26 +127,13 @@ export default async function (app) {
       }]
     })
   })
+  // Routes without context first as otherwise we might have catch conflicts
   app.get(`${apiPath}/collections/:name`, async (req, res, next) => {
     try {
       const name = _.get(req, 'params.name')
       const collection = await getCollection(name)
       debug('Getting collection', collection)
       res.json(collection)
-    } catch (error) {
-      next(error)
-    }
-  })
-
-  // Collection features
-  app.get(`${apiPath}/collections/:context/:name/items`, async (req, res, next) => {
-    try {
-      const context = _.get(req, 'params.context')
-      const name = _.get(req, 'params.name')
-      const query = _.get(req, 'query', {})
-      debug(`Getting features for collection ${name} and context ${context}`)
-      const features = await utils.getFeaturesFromService(app, `${apiPath}/${context}/${name}`, query)
-      res.json(features)
     } catch (error) {
       next(error)
     }
@@ -161,6 +149,41 @@ export default async function (app) {
       next(error)
     }
   })
+  app.get(`${apiPath}/collections/:name/items/:id`, async (req, res, next) => {
+    try {
+      const name = _.get(req, 'params.name')
+      const id = _.get(req, 'params.id')
+      debug(`Getting feature ${id} from collection ${name}`)
+      const feature = await utils.getFeatureFromService(app, `${apiPath}/${name}`, id)
+      res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, name, feature) }))
+    } catch (error) {
+      next(error)
+    }
+  })
+  // Similar route with context
+  app.get(`${apiPath}/collections/:context/:name`, async (req, res, next) => {
+    try {
+      const context = _.get(req, 'params.context')
+      const name = _.get(req, 'params.name')
+      const collection = await getCollection(name, context)
+      debug('Getting collection', collection)
+      res.json(collection)
+    } catch (error) {
+      next(error)
+    }
+  })
+  app.get(`${apiPath}/collections/:context/:name/items`, async (req, res, next) => {
+    try {
+      const context = _.get(req, 'params.context')
+      const name = _.get(req, 'params.name')
+      const query = _.get(req, 'query', {})
+      debug(`Getting features for collection ${name} and context ${context}`)
+      const features = await utils.getFeaturesFromService(app, `${apiPath}/${context}/${name}`, query)
+      res.json(features)
+    } catch (error) {
+      next(error)
+    }
+  })
   app.get(`${apiPath}/collections/:context/:name/items/:id`, async (req, res, next) => {
     try {
       const context = _.get(req, 'params.context')
@@ -169,17 +192,6 @@ export default async function (app) {
       debug(`Getting feature ${id} from collection ${name} and context ${context}`)
       const feature = await utils.getFeatureFromService(app, `${apiPath}/${context}/${name}`, id)
       res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, `${context}/${name}`, feature) }))
-    } catch (error) {
-      next(error)
-    }
-  })
-  app.get(`${apiPath}/collections/:name/items/:id`, async (req, res, next) => {
-    try {
-      const name = _.get(req, 'params.name')
-      const id = _.get(req, 'params.id')
-      debug(`Getting feature ${id} from collection ${name}`)
-      const feature = await utils.getFeatureFromService(app, `${apiPath}/${name}`, id)
-      res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, name, feature) }))
     } catch (error) {
       next(error)
     }
