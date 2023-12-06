@@ -65,11 +65,16 @@ This image is designed to be deployed using the [Kargo](https://kalisio.github.i
 
 ## Testing
 
-To run the tests, use the subcommand `test`: 
+To run the internal tests, use the subcommand `test`: 
 
 ```bash
 yarn test
 ```
+
+To run the OGC API - Features Conformance Test Suite:
+1) download the "all-in-one" JAR file that includes the test suite and all of its dependencies (e.g. `1.7` version),
+2) update the target URL in the `test/test-run-props.xml` file if required
+3) run the following command `java -jar ets-ogcapi-features10-1.7-aio.jar -o $TMPDIR -h test-run-props.xml`
 
 ## Contributing
 
