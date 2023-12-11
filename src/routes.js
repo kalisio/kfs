@@ -43,6 +43,7 @@ export default async function (app) {
   // API definition
   const definition = await utils.getApiFile(app, 'definition')
   app.get(`${apiPath}/definition`, (req, res, next) => {
+    res.set('content-type', 'application/vnd.oai.openapi+json;version=3.0')
     res.json(definition)
   })
 
@@ -97,14 +98,15 @@ export default async function (app) {
         collections = collections.concat(utils.generateCollections(baseUrl, layer))
       })
     }
-    // Otherwise try to retrieve available services as if they are
+    // Otherwise try to retrieve available feature services as if they are
     // authorised in the distribution config it should be exposed
     debug('Seeking for services in app')
     const servicePaths = Object.keys(app.services)
     servicePaths.forEach(path => {
       const service = app.service(path)
-      // Do not expose catalog or local internal services
-      if (!service.remote || (path === stripSlashes(`${apiPath}/catalog`))) return
+      console.log('options', service.remoteOptions)
+      // Do not expose non features services or local internal services
+      if (!service.remote || (_.get(service, 'remoteOptions.modelName') !== 'features')) return
       const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
       // Check if already exposed as a layer
       if (_.find(collections, { id: serviceName })) return
@@ -120,7 +122,7 @@ export default async function (app) {
     res.json({
       collections,
       links: [{
-        href: `${baseUrl}/collections?f=application/json`,
+        href: `${baseUrl}/collections`,
         rel: 'self',
         type: 'application/json',
         title: 'This document'
@@ -144,6 +146,7 @@ export default async function (app) {
       const query = _.get(req, 'query', {})
       debug(`Getting features for collection ${name}`)
       const features = await utils.getFeaturesFromService(app, `${apiPath}/${name}`, query)
+      res.set('content-type', 'application/geo+json')
       res.json(features)
     } catch (error) {
       next(error)
@@ -155,6 +158,7 @@ export default async function (app) {
       const id = _.get(req, 'params.id')
       debug(`Getting feature ${id} from collection ${name}`)
       const feature = await utils.getFeatureFromService(app, `${apiPath}/${name}`, id)
+      res.set('content-type', 'application/geo+json')
       res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, name, feature) }))
     } catch (error) {
       next(error)
@@ -179,6 +183,7 @@ export default async function (app) {
       const query = _.get(req, 'query', {})
       debug(`Getting features for collection ${name} and context ${context}`)
       const features = await utils.getFeaturesFromService(app, `${apiPath}/${context}/${name}`, query)
+      res.set('content-type', 'application/geo+json')
       res.json(features)
     } catch (error) {
       next(error)
@@ -191,6 +196,7 @@ export default async function (app) {
       const id = _.get(req, 'params.id')
       debug(`Getting feature ${id} from collection ${name} and context ${context}`)
       const feature = await utils.getFeatureFromService(app, `${apiPath}/${context}/${name}`, id)
+      res.set('content-type', 'application/geo+json')
       res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, `${context}/${name}`, feature) }))
     } catch (error) {
       next(error)

@@ -4,25 +4,25 @@
   "description": "Rely on OGC API Features to distribute geospatial data",
   "links": [
     {
-      "href": "{{BASE_URL}}?f=application/json",
+      "href": "{{BASE_URL}}",
       "rel": "self",
       "type": "application/json",
       "title": "This document as JSON"
     },
     {
-      "href": "{{BASE_URL}}/definition?f=application/json",
+      "href": "{{BASE_URL}}/definition",
       "rel": "service-desc",
       "type": "application/vnd.oai.openapi+json;version=3.0",
       "title": "The API definition as JSON"
     },
     {
-      "href": "{{BASE_URL}}/conformance?f=application/json",
+      "href": "{{BASE_URL}}/conformance",
       "rel": "conformance",
       "type": "application/json",
       "title": "Conformance declaration as application/json"
     },
     {
-      "href": "{{BASE_URL}}/collections?f=application/json",
+      "href": "{{BASE_URL}}/collections",
       "rel": "data",
       "type": "application/json",
       "title": "Collections"

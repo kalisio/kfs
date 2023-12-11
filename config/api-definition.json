@@ -1,5 +1,5 @@
 {
-  "api" : "3.0.1",
+  "openapi" : "3.0.1",
   "info" : {
     "title" : "OGC API - Features Server"
   },
@@ -32,7 +32,7 @@
         "description" : "The landing page provides links to the API definition, the Conformance statements and the metadata about the feature data in this dataset.",
         "operationId" : "getLandingPage",
         "responses" : {
-          "responses" : {
+          "200" : {
             "description" : "links to the API capabilities",
             "content" : {
               "application/json" : {
@@ -87,7 +87,8 @@
         "tags" : [
           "Capabilities"
         ],
-        "summary" : "describe the feature collections in the dataset",
+        "summary" : "retrieve the feature collections",
+        "description" : "describe the feature collections in the dataset",
         "operationId" : "describeCollections",
         "responses" : {
           "200" : {
@@ -118,7 +119,8 @@
         "tags" : [
           "Capabilities"
         ],
-        "summary" : "describe the { collectionId } feature collection",
+        "summary" : "retrieve the { collectionId } feature collection",
+        "description" : "describe the { collectionId } feature collection",
         "operationId" : "describeCollection",
         "parameters" : [
           {
@@ -195,7 +197,8 @@
         "tags" : [
           "Features"
         ],
-        "summary" : "retrieve a feature; use content negotiation to request HTML or GeoJSON",
+        "summary" : "retrieve a feature",
+        "description" : "retrieve a feature; use content negotiation to request HTML or GeoJSON",
         "operationId" : "getFeature",
         "parameters" : [
           {
