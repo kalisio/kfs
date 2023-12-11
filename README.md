@@ -34,7 +34,7 @@ Here are the environment variables you can use to customize the service:
 | `HOSTNAME` | Hostname | `localhost` |
 | `PORT` | Port the API will respond on | `8081` |
 | `BASE_URL` | Base service URL to be used to fill links | `http://${hostname}:${port}` |
-| `API_PREFIX` | Prefix used on API routes | - |
+| `API_PREFIX` | Prefix used on API routes | `/api`  |
 | `DEBUG` | The namespaces to enable debug output. Set it to `kfs:*` to enable full debug output. |  - |
 
 ## Building
@@ -72,9 +72,11 @@ yarn test
 ```
 
 To run the OGC API - Features Conformance Test Suite:
-1) download the "all-in-one" JAR file that includes the test suite and all of its dependencies (e.g. `1.7` version),
+1) use the JAR file provided in `test` or download the "all-in-one" JAR file that includes the test suite and all of its dependencies (e.g. `1.7` version) on the Maven central repository,
 2) update the target URL in the `test/test-run-props.xml` file if required
-3) run the following command `java -jar ets-ogcapi-features10-1.7-aio.jar -o $TMPDIR -h test-run-props.xml`
+3) run the following command `java -jar ets-ogcapi-features10-1.7-aio.jar -o /path/to/output -h /path/to/test-run-props.xml`
+
+A useful tool to check your OpenAPI specification conformance is [redocly-cli](https://github.com/Redocly/redocly-cli).
 
 ## Contributing
 
