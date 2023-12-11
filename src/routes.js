@@ -146,7 +146,7 @@ export default async function (app) {
       debug(`Getting features for collection ${name}`)
       const features = await utils.getFeaturesFromService(app, `${apiPath}/${name}`, query)
       res.set('content-type', 'application/geo+json')
-      res.json(features)
+      res.json(Object.assign(features, { links: utils.generateFeatureCollectionLinks(baseUrl, name, query) }))
     } catch (error) {
       next(error)
     }
@@ -183,7 +183,7 @@ export default async function (app) {
       debug(`Getting features for collection ${name} and context ${context}`)
       const features = await utils.getFeaturesFromService(app, `${apiPath}/${context}/${name}`, query)
       res.set('content-type', 'application/geo+json')
-      res.json(features)
+      res.json(Object.assign(features, { links: utils.generateFeatureCollectionLinks(baseUrl, name, query) }))
     } catch (error) {
       next(error)
     }

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url'
 import distribution, { finalize } from '@kalisio/feathers-distributed'
 import { kdk } from '@kalisio/kdk/core.api.js'
 import { createFeaturesService, createCatalogService } from '@kalisio/kdk/map.api.js'
+import { DefaultLimit } from '../src/utils.js'
 import createServer from '../src/main.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -20,7 +21,7 @@ function runTests (catalog) {
   let app, server, baseUrl,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
     nbStations, nbObservations, feature
-  const nbPerPage = 500
+  const nbPerPage = DefaultLimit
 
   it('initialize the remote app', async () => {
     kapp = kdk()
@@ -38,8 +39,8 @@ function runTests (catalog) {
       // Distribute only the test services
       services: (service) => service.path.includes('hubeau') ||
                 (catalog && service.path.includes('catalog')),
-      // Distribute at least modelName for KFS to know about features services
-      remoteServiceOptions: () => ['modelName']
+      // Distribute at least modelName and pagination for KFS to know about features services
+      remoteServiceOptions: () => ['modelName', 'paginate']
     }))
     await kapp.db.connect()
     // Create a global catalog service
@@ -209,6 +210,12 @@ function runTests (catalog) {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbStations)
     expect(response.body.numberReturned).to.equal(nbStations < nbPerPage ? nbStations : nbPerPage)
+    response.body.links.forEach(link => {
+      expect(link.href).toExist()
+      expect(link.href.includes('offset')).beTrue()
+      expect(link.href.includes('limit')).beTrue()
+      expect(link.rel).toExist()
+    })
   })
   // Let enough time to process
     .timeout(5000)

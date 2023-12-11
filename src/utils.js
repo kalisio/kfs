@@ -11,6 +11,8 @@ const debug = makeDebug('kfs:utils')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { BadRequest } = errors
 
+export const DefaultLimit = 500
+export const DefaultOffset = 0
 const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
 
 function getEnvsubOptions (app) {
@@ -89,9 +91,26 @@ export function generateCollectionLinks (baseUrl, name) {
   },
   {
     href: `${baseUrl}/collections/${name}`,
-    rel: 'data',
+    rel: 'self',
     type: 'application/json',
     title: 'The collection as JSON'
+  }]
+}
+
+export function generateFeatureCollectionLinks (baseUrl, name, query) {
+  const limit = _.get(query, 'limit', DefaultLimit)
+  const offset = _.get(query, 'offset', DefaultOffset)
+  return [{
+    href: `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${offset}`,
+    rel: 'self',
+    type: 'application/geo+json',
+    title: 'The current page of collection features as GeoJSON'
+  },
+  {
+    href: `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${limit}`,
+    rel: 'next',
+    type: 'application/json',
+    title: 'The next page of collection features as GeoJSON'
   }]
 }
 
@@ -153,10 +172,14 @@ export function convertQuery (query) {
   if (query.limit) {
     convertedQuery.$limit = _.toNumber(query.limit)
     delete query.limit
+  } else {
+    convertedQuery.$limit = DefaultLimit
   }
   if (query.offset) {
     convertedQuery.$skip = _.toNumber(query.offset)
     delete query.offset
+  } else {
+    convertedQuery.$skip = DefaultOffset
   }
   if (query.bbox) {
     // TODO: we should support additionnal CRS according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_bbox
@@ -205,7 +228,7 @@ export function convertFeature (feature) {
   return feature
 }
 
-export function convertFeatureCollection (featureCollection) {
+export function convertFeatureCollection (featureCollection, query) {
   const features = _.get(featureCollection, 'features', [])
   features.forEach(convertFeature)
   featureCollection.numberMatched = featureCollection.total
@@ -223,7 +246,7 @@ export async function getFeaturesFromService (app, servicePath, query) {
   query = convertQuery(query)
   debug(`Requesting feature collection on path ${servicePath}`, query)
   const featureCollection = await featureService.find({ query })
-  return convertFeatureCollection(featureCollection)
+  return convertFeatureCollection(featureCollection, query)
 }
 
 export function generateFeatureLinks (baseUrl, name, feature) {
