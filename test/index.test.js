@@ -17,7 +17,7 @@ const { util, expect } = chai
 
 // Test suite based on using the catalog service or not
 function runTests (catalog) {
-  let app, server, baseUrl, apiPath,
+  let app, server, baseUrl,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
     nbStations, nbObservations, feature
   const nbPerPage = 500
@@ -37,7 +37,9 @@ function runTests (catalog) {
       key: 'kfs-test',
       // Distribute only the test services
       services: (service) => service.path.includes('hubeau') ||
-                (catalog && service.path.includes('catalog'))
+                (catalog && service.path.includes('catalog')),
+      // Distribute at least modelName for KFS to know about features services
+      remoteServiceOptions: () => ['modelName']
     }))
     await kapp.db.connect()
     // Create a global catalog service
@@ -108,7 +110,6 @@ function runTests (catalog) {
     app = server.app
     expect(app).toExist()
     baseUrl = app.get('baseUrl')
-    apiPath = app.get('apiPath')
     // Wait long enough to be sure distribution is up
     await utility.promisify(setTimeout)(10000)
   })
@@ -116,7 +117,7 @@ function runTests (catalog) {
     .timeout(15000)
 
   it('get landing page', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}`)
+    const response = await request.get(`${baseUrl}`)
     expect(response.body.links).toExist()
     expect(response.body.links.length).to.equal(4)
     response.body.links.forEach(link => {
@@ -128,21 +129,21 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get conformance page', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/conformance`)
+    const response = await request.get(`${baseUrl}/conformance`)
     expect(response.body.conformsTo).toExist()
   })
   // Let enough time to process
     .timeout(5000)
 
   it('get api definition', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/definition`)
+    const response = await request.get(`${baseUrl}/definition`)
     expect(response.body.paths).toExist()
   })
   // Let enough time to process
     .timeout(5000)
 
   it('get collections', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections`)
+    const response = await request.get(`${baseUrl}/collections`)
     expect(response.body.collections).toExist()
     expect(response.body.collections.length).to.equal(2)
     expect(response.body.links).toExist()
@@ -156,7 +157,7 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get collection', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-stations`)
     expect(response.body.id).toExist()
     expect(response.body.id).to.equal('hubeau-stations')
     expect(response.body.itemType).toExist()
@@ -190,7 +191,7 @@ function runTests (catalog) {
 
   it('get nonexistent collection', async () => {
     try {
-      await request.get(`${baseUrl}${apiPath}/collections/xxx`)
+      await request.get(`${baseUrl}/collections/xxx`)
       assert.fail('getting nonexistent collection should raise on error')
     } catch (data) {
       const error = data.response.body
@@ -202,7 +203,7 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get items', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
@@ -214,7 +215,7 @@ function runTests (catalog) {
 
   it('get nonexistent item', async () => {
     try {
-      await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items/xxx`)
+      await request.get(`${baseUrl}/collections/hubeau-stations/items/xxx`)
       assert.fail('getting nonexistent item should raise on error')
     } catch (data) {
       const error = data.response.body
@@ -226,8 +227,8 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get item', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items/${feature._id}`)
-    expect(response.body._id).toExist()
+    const response = await request.get(`${baseUrl}/collections/hubeau-stations/items/${feature._id}`)
+    expect(response.body.id).toExist()
     expect(response.body.properties).toExist()
     expect(response.body.links).toExist()
     expect(response.body.links.length).to.equal(2)
@@ -240,7 +241,7 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get items with filtering on string property', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ gml_id: 'StationHydro_FXX_shp.A282000101' })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
@@ -252,7 +253,7 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get items without filtering on a reserved query parameter', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ jwt: 'xxx' })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
@@ -264,7 +265,7 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get items with filtering on number property', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ H: 0.63 })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
@@ -277,7 +278,7 @@ function runTests (catalog) {
 
   it('get items with incomplete bbox', async () => {
     try {
-      await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+      await request.get(`${baseUrl}/collections/hubeau-stations/items`)
         .query({ bbox: [6.39, 48.30, 48.32].join(',') })
       assert.fail('getting with incomplete bbox should raise on error')
     } catch (data) {
@@ -290,7 +291,7 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get items in bbox', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ bbox: [6.39, 48.30, 6.41, 48.32].join(',') })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
@@ -302,7 +303,7 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get paginated items', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-stations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ limit: 10 })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
@@ -315,7 +316,7 @@ function runTests (catalog) {
 
   it('get items at invalid time', async () => {
     try {
-      await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      await request.get(`${baseUrl}/collections/hubeau-observations/items`)
         .query({ datetime: 'xxx' })
       assert.fail('getting at invalid time should raise on error')
     } catch (data) {
@@ -328,7 +329,7 @@ function runTests (catalog) {
     .timeout(5000)
 
   it('get items at time', async () => {
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ datetime: '2018-10-22T22:00:00.000Z' })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
@@ -341,7 +342,7 @@ function runTests (catalog) {
 
   it('get items with invalid time interval', async () => {
     try {
-      await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+      await request.get(`${baseUrl}/collections/hubeau-observations/items`)
         .query({ datetime: '2018-10-22T22:00:00.000Z/2018-10-23T08:00:00.000Z/2018-10-24T08:00:00.000Z' })
       assert.fail('getting with invalid time interval should raise on error')
     } catch (data) {
@@ -355,7 +356,7 @@ function runTests (catalog) {
 
   it('get items in bounded time interval', async () => {
     // Data in range 2018-10-22T22:00:00.000Z/2018-10-24T08:00:00.000Z every hour
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ datetime: '2018-10-22T22:00:00.000Z/2018-10-24T08:00:00.000Z' })
     // First day = 3 obs, second day 24 obs, third day 8 obs
     const nbObservations = 3 + 24 + 8
@@ -370,7 +371,7 @@ function runTests (catalog) {
 
   it('get items in half-bounded start time interval', async () => {
     // Data starts at 2018-10-22T22:00:00.000Z every hour
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ datetime: '../2018-10-23T08:00:00.000Z' })
     // First day = 3 obs, second day 8 obs
     const nbObservations = 3 + 8
@@ -387,7 +388,7 @@ function runTests (catalog) {
 
   it('get items in half-bounded end time interval', async () => {
     // Data ends at 2018-11-23T08:06:00.000Z every 3 mns
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ datetime: '2018-11-22T20:00:00.000Z/..' })
     // First day = 80 obs, second day 163 obs
     const nbObservations = 80 + 163
@@ -402,7 +403,7 @@ function runTests (catalog) {
 
   it('get items with combined filters', async () => {
     // Data ends at 2018-11-23T08:06:00.000Z every 3 mns with some values higher than 0.33
-    const response = await request.get(`${baseUrl}${apiPath}/collections/hubeau-observations/items`)
+    const response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ H: 0.43, datetime: '2018-11-22T20:00:00.000Z/..', bbox: [7.42, 48.63, 7.43, 48.64].join(','), limit: 3 })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()

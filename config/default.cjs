@@ -6,10 +6,10 @@ const port = process.env.PORT || 8081
 const apiPath = process.env.API_PREFIX || '/api'
 /* Use to test HTTPS locally, useful for OGC conformance test suite,
   please refer to https://web.dev/articles/how-to-use-local-https for setup */
-const https = {
+const https = null/*= {
   key: '/home/luc/Development/localhost-key.pem',
   cert: '/home/luc/Development/localhost.pem'
-}
+}*/
 const baseUrl = process.env.BASE_URL || (https ? `https://${host}:${port}${apiPath}` : `http://${host}:${port}${apiPath}`)
 
 module.exports = {

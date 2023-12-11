@@ -104,7 +104,6 @@ export default async function (app) {
     const servicePaths = Object.keys(app.services)
     servicePaths.forEach(path => {
       const service = app.service(path)
-      console.log('options', service.remoteOptions)
       // Do not expose non features services or local internal services
       if (!service.remote || (_.get(service, 'remoteOptions.modelName') !== 'features')) return
       const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
