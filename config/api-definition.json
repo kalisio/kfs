@@ -1,10 +1,12 @@
 {
   "openapi" : "3.0.1",
   "info" : {
-    "title" : "OGC API - Features Server"
+    "title" : "OGC API - Features Server",
+    "version" : "{{VERSION}}"
   },
   "externalDocs" : {
-    "description" : "OGC API - Features standard"
+    "description" : "OGC API - Features standard",
+    "url": "http://www.opengis.net/doc/IS/ogcapi-features-1/1.0"
   },
   "servers" : [
     {
@@ -101,7 +103,7 @@
               }
             }
           },
-          "default" : {
+          "5XX" : {
             "description" : "An error occured.",
             "content" : {
               "application/json" : {
@@ -138,9 +140,9 @@
               }
             }
           },
-          "default" : {
+          "5XX" : {
             "description" : "An error occured.",
-            "default" : {
+            "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/exception"
@@ -157,7 +159,7 @@
           "Features"
         ],
         "summary" : "retrieve the features from the { collectionId } collection",
-        "discription" : "Every feature in a dataset belongs to a collection.",
+        "description" : "Every feature in a dataset belongs to a collection.",
         "operationId" : "getFeatures",
         "parameters" : [
           {
@@ -180,11 +182,6 @@
               "application/geo+json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/featureCollectionGeoJSON"
-                }
-              },
-              "application/json" : {
-                "schema" : {
-                  "type" : "binary"
                 }
               }
             }
@@ -215,11 +212,6 @@
               "application/geo+json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/featureGeoJSON"
-                }
-              },
-              "application/json" : {
-                "schema" : {
-                  "type" : "binary"
                 }
               }
             }
@@ -268,7 +260,7 @@
             "example" : "zipcode"
           },
           "type" : {
-            "Type" : "string",
+            "type" : "string",
             "description" : "The property type."
           }
         }
@@ -464,9 +456,7 @@
             "maxItems" : 6,
             "minItems" : 4,
             "type" : "array",
-            "discription" : {
-              "description" : "West, north, east, south edges of the spatial extent"
-            },
+            "description" : "West, north, east, south edges of the spatial extent",
             "example" : [
               -180,
               -90,
@@ -479,7 +469,7 @@
           },
           "trs" : {
             "type" : "string",
-            "discription" : "Temporal reference system of the coordinates in the temporal extent.",
+            "description" : "Temporal reference system of the coordinates in the temporal extent.",
             "enum" : [
               "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian"
             ],
@@ -489,7 +479,7 @@
             "maxItems" : 2,
             "minItems" : 2,
             "type" : "array",
-            "discription" : "Begin and end times of the temporal extent.",
+            "description" : "Begin and end times of the temporal extent.",
             "example" : [
               "2011-11-11T12:22:11Z",
               "2012-11-24T12:32:43Z"
@@ -559,7 +549,7 @@
           },
           "properties" : {
             "type" : "object",
-            "nullable" : "true"
+            "nullable" : true
           },
           "id" : {
             "oneOf" : [
@@ -580,9 +570,7 @@
         "type" : "object",
         "properties" : {
           "type" : {
-            "type" : {
-              "type" : "string"
-            },
+            "type" : "string",
             "required" : [
               "Point",
               "MultiPoint",
@@ -599,20 +587,6 @@
         "type" : "string",
         "description" : "This property indicates the time and date when the response was generated.",
         "format" : "date-time"
-      },
-      "securitySchemes" : {
-        "client_token_auth" : {
-          "type" : "apiKey",
-          "description" : "API key to authorize requests.",
-          "in" : "query",
-          "name" : "token"
-        },
-        "bearerAuth" : {
-          "type" : "http",
-          "description" : "API bearer key to authorize requests from header.",
-          "schema" : "bearer",
-          "bearerFormat" : "Authorization"
-        }
       }
     },
     "parameters" : {
@@ -726,18 +700,25 @@
       }
     },
     "securitySchemes" : {
-      "client_token_auth" : {
+      "jwtInQuery" : {
         "type" : "apiKey",
-        "description" : "API key to authorize requests.",
+        "description" : "API key to authorize requests from query.",
         "in" : "query",
-        "name" : "token"
+        "name" : "jwt"
       },
-      "bearerAuth" : {
+      "jwtInHeader" : {
         "type" : "http",
         "description" : "API bearer key to authorize requests from header.",
-        "schema" : "bearer",
-        "bearerFormat" : "Authorization"
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
       }
     }
-  }
+  },
+  "security": [
+    {
+      "jwtInQuery" : []
+    }, {
+      "jwtInHeader" : []
+    }
+  ]
 }

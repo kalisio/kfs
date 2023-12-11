@@ -1,11 +1,17 @@
 import _ from 'lodash'
+import fs from 'fs-extra'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import moment from 'moment'
 import envsub from 'envsub'
 import makeDebug from 'debug'
 import errors from '@feathersjs/errors'
 
 const debug = makeDebug('kfs:utils')
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { BadRequest } = errors
+
+const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
 
 function getEnvsubOptions (app) {
   const baseUrl = app.get('baseUrl')
@@ -14,7 +20,8 @@ function getEnvsubOptions (app) {
     syntax: 'handlebars',
     envs: [
       { name: 'BASE_URL', value: baseUrl }, // see --env flag
-      { name: 'API_PREFIX', value: apiPath }
+      { name: 'API_PREFIX', value: apiPath },
+      { name: 'VERSION', value: packageInfo.version }
     ]
   }
 }
