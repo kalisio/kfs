@@ -75,13 +75,13 @@ export function generateCollectionTemporal (layer) {
 
 export function generateCollectionLinks (baseUrl, name) {
   return [{
-    href: `${baseUrl}/collections/${name}/items?f=application/json`,
+    href: `${baseUrl}/collections/${name}/items`,
     rel: 'items',
     type: 'application/geo+json',
     title: 'The collection features as GeoJSON'
   },
   {
-    href: `${baseUrl}/collections/${name}?f=application/json`,
+    href: `${baseUrl}/collections/${name}`,
     rel: 'data',
     type: 'application/json',
     title: 'The collection as JSON'
@@ -191,9 +191,18 @@ export function convertQuery (query) {
   return convertedQuery
 }
 
+export function convertFeature (feature) {
+  // Convert internal ID to OGC ID
+    _.set(feature, 'id', _.get(feature, '_id'))
+    _.unset(feature, '_id')
+  return feature
+}
+
 export function convertFeatureCollection (featureCollection) {
+  const features = _.get(featureCollection, 'features', [])
+  features.forEach(convertFeature)
   featureCollection.numberMatched = featureCollection.total
-  featureCollection.numberReturned = featureCollection.features.length
+  featureCollection.numberReturned = features.length
   delete featureCollection.total
   delete featureCollection.skip
   delete featureCollection.limit
@@ -212,22 +221,17 @@ export async function getFeaturesFromService (app, servicePath, query) {
 
 export function generateFeatureLinks (baseUrl, name, feature) {
   return [{
-    href: `${baseUrl}/collections/${name}/items/${feature._id}?f=application/json`,
+    href: `${baseUrl}/collections/${name}/items/${feature._id}`,
     rel: 'self',
     type: 'application/geo+json',
     title: 'The feature as GeoJSON'
   },
   {
-    href: `${baseUrl}/collections/${name}?f=application/json`,
+    href: `${baseUrl}/collections/${name}`,
     rel: 'collection',
     type: 'application/json',
     title: 'The collection as JSON'
   }]
-}
-
-export function convertFeature (feature) {
-  // Nothing specific todo now on
-  return feature
 }
 
 export async function getFeatureFromService (app, servicePath, id) {
