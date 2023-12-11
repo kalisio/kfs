@@ -4,11 +4,18 @@ const winston = require('winston')
 const host = process.env.HOSTNAME || 'localhost'
 const port = process.env.PORT || 8081
 const apiPath = process.env.API_PREFIX || '/api'
-const baseUrl = process.env.BASE_URL || `http://${host}:${port}`
+/* Use to test HTTPS locally, useful for OGC conformance test suite,
+  please refer to https://web.dev/articles/how-to-use-local-https for setup */
+const https = {
+  key: '/home/luc/Development/localhost-key.pem',
+  cert: '/home/luc/Development/localhost.pem'
+}
+const baseUrl = process.env.BASE_URL || (https ? `https://${host}:${port}${apiPath}` : `http://${host}:${port}${apiPath}`)
 
 module.exports = {
   host,
   port,
+  https,
   baseUrl,
   apiPath,
   api: {

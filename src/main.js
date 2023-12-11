@@ -1,5 +1,6 @@
 import _ from 'lodash'
 import fs from 'fs-extra'
+import https from 'https'
 import winston from 'winston'
 import 'winston-daily-rotate-file'
 import compress from 'compression'
@@ -64,9 +65,22 @@ export default async function createServer () {
   // Configure middlewares - always has to be last
   await app.configure(middlewares)
 
-  const port = app.get('port')
-  app.logger.info('Configuring HTTP server at port ' + port.toString())
-  const server = await app.listen(port)
+  // Last lauch server
+  const httpsConfig = app.get('https')
+  let server
+  if (httpsConfig) {
+    const port = httpsConfig.port || app.get('port')
+    server = https.createServer({
+      key: fs.readFileSync(httpsConfig.key),
+      cert: fs.readFileSync(httpsConfig.cert)
+    }, app)
+    app.logger.info('Configuring HTTPS server at port ' + port.toString())
+    server = await server.listen(port)
+  } else {
+    const port = app.get('port')
+    app.logger.info('Configuring HTTP server at port ' + port.toString())
+    server = await app.listen(port)
+  }
   server.app = app
   server.app.logger.info('Server started listening')
 
