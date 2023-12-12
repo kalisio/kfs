@@ -15,5 +15,8 @@ yarn install
 git clone https://github.com/kalisio/feathers-distributed && cd feathers-distributed && yarn install && yarn link && cd ..
 yarn link @kalisio/feathers-distributed
 
+git clone https://github.com/kalisio/kdk && cd kdk && yarn install && yarn link && cd ..
+yarn link @kalisio/kdk
+
 yarn test
 check_code $? "Running tests"
