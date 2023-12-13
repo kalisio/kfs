@@ -29,20 +29,23 @@ export default async function (app) {
   })
 
   // API landing page
-  const landingPage = await utils.getApiFile(app, 'landingPage')
-  app.get(apiPath || '/', (req, res, next) => {
+  app.get(apiPath || '/', async (req, res, next) => {
+    const query = _.get(req, 'query', {})
+    const landingPage = await utils.getApiFile(app, 'landingPage', query)
     res.json(landingPage)
   })
 
   // API conformance
-  const conformance = await utils.getApiFile(app, 'conformance')
-  app.get(`${apiPath}/conformance`, (req, res, next) => {
+  app.get(`${apiPath}/conformance`, async (req, res, next) => {
+    const query = _.get(req, 'query', {})
+    const conformance = await utils.getApiFile(app, 'conformance', query)
     res.json(conformance)
   })
 
   // API definition
-  const definition = await utils.getApiFile(app, 'definition')
-  app.get(`${apiPath}/definition`, (req, res, next) => {
+  app.get(`${apiPath}/definition`, async (req, res, next) => {
+    const query = _.get(req, 'query', {})
+    const definition = await utils.getApiFile(app, 'definition', query)
     res.set('content-type', 'application/vnd.oai.openapi+json;version=3.0')
     res.json(definition)
   })

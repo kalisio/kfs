@@ -14,26 +14,28 @@ const { BadRequest } = errors
 
 const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
 
-function getEnvsubOptions (app) {
+function getEnvsubOptions (app, query) {
+  // Report input query parameters if any (eg token)
+  let queryUrl = new URLSearchParams(query).toString()
+  if (queryUrl) queryUrl = `?${queryUrl}`
   const baseUrl = app.get('baseUrl')
-  const apiPath = app.get('apiPath')
   return {
     syntax: 'handlebars',
     envs: [
       { name: 'BASE_URL', value: baseUrl }, // see --env flag
-      { name: 'API_PREFIX', value: apiPath },
+      { name: 'QUERY_URL', value: queryUrl },
       { name: 'VERSION', value: packageInfo.version }
     ]
   }
 }
 
-export async function getApiFile (app, file) {
+export async function getApiFile (app, file, query) {
   const config = app.get('api')
   file = _.get(config, file)
   const result = await envsub({
     templateFile: file,
     outputFile: file + '.envsubh',
-    options: getEnvsubOptions(app)
+    options: getEnvsubOptions(app, query)
   })
   return JSON.parse(result.outputContents)
 }
@@ -83,15 +85,18 @@ export function generateCollectionTemporal (layer) {
   }
 }
 
-export function generateCollectionLinks (baseUrl, name) {
+export function generateCollectionLinks (baseUrl, name, query) {
+  // Report input query parameters if any (eg token)
+  let queryUrl = new URLSearchParams(query).toString()
+  if (queryUrl) queryUrl = `?${queryUrl}`
   return [{
-    href: `${baseUrl}/collections/${name}/items`,
+    href: `${baseUrl}/collections/${name}/items${queryUrl}`,
     rel: 'items',
     type: 'application/geo+json',
     title: 'The collection features as GeoJSON'
   },
   {
-    href: `${baseUrl}/collections/${name}`,
+    href: `${baseUrl}/collections/${name}${queryUrl}`,
     rel: 'self',
     type: 'application/json',
     title: 'The collection as JSON'
@@ -123,8 +128,8 @@ export function generateFeatureCollectionLinks (baseUrl, name, query, features) 
   return links
 }
 
-export function generateCollection (baseUrl, name, title, description) {
-  const links = generateCollectionLinks(baseUrl, name)
+export function generateCollection (baseUrl, name, title, description, query) {
+  const links = generateCollectionLinks(baseUrl, name, query)
   return {
     id: name,
     title,
@@ -138,7 +143,7 @@ export function generateCollection (baseUrl, name, title, description) {
   }
 }
 
-export function generateCollections (baseUrl, layer) {
+export function generateCollections (baseUrl, layer, query) {
   debug('Generating collections for layer', layer)
   const collections = []
   // Take i18n into account if any
@@ -147,10 +152,10 @@ export function generateCollections (baseUrl, layer) {
   const extent = generateCollectionExtent(layer)
   // Probe service as well ?
   if (layer.probeService) {
-    collections.push(Object.assign(generateCollection(baseUrl, layer.service, title + ' (measures)', description), extent))
-    collections.push(Object.assign(generateCollection(baseUrl, layer.probeService, title + ' (stations)', description), extent))
+    collections.push(Object.assign(generateCollection(baseUrl, layer.service, title + ' (measures)', description, query), extent))
+    collections.push(Object.assign(generateCollection(baseUrl, layer.probeService, title + ' (stations)', description, query), extent))
   } else {
-    collections.push(Object.assign(generateCollection(baseUrl, layer.service, title, description), extent))
+    collections.push(Object.assign(generateCollection(baseUrl, layer.service, title, description, query), extent))
   }
   return collections
 }
