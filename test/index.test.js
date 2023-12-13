@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url'
 import distribution, { finalize } from '@kalisio/feathers-distributed'
 import { kdk } from '@kalisio/kdk/core.api.js'
 import { createFeaturesService, createCatalogService } from '@kalisio/kdk/map.api.js'
-import { DefaultLimit } from '../src/utils.js'
+import { getDefaults } from '../src/defaults.js'
 import createServer from '../src/main.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -21,7 +21,7 @@ function runTests (catalog) {
   let app, server, baseUrl,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
     nbStations, nbObservations, feature
-  const nbPerPage = DefaultLimit
+  const nbPerPage = getDefaults().limit
 
   it('initialize the remote app', async () => {
     kapp = kdk()

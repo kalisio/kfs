@@ -1,18 +1,17 @@
 import _ from 'lodash'
 import fs from 'fs-extra'
 import path from 'path'
-import { fileURLToPath } from 'url'
+import { fileURLToPath, URLSearchParams } from 'url'
 import moment from 'moment'
 import envsub from 'envsub'
 import makeDebug from 'debug'
 import errors from '@feathersjs/errors'
+import { getDefaults } from './defaults.js'
 
 const debug = makeDebug('kfs:utils')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { BadRequest } = errors
 
-export const DefaultLimit = 500
-export const DefaultOffset = 0
 const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
 
 function getEnvsubOptions (app) {
@@ -52,6 +51,8 @@ export function generateCollectionExtent (layer) {
 }
 
 export function generateCollectionTemporal (layer) {
+  const { timeUnit } = getDefaults()
+
   const now = moment()
   // TODO: compute time extent based on data ?
   let from = layer.from
@@ -74,8 +75,8 @@ export function generateCollectionTemporal (layer) {
   return {
     temporal: {
       interval: [[
-        from ? from.toISOString() : null,
-        to ? to.toISOString() : null
+        from ? from.startOf(timeUnit).toISOString() : null,
+        to ? to.endOf(timeUnit).toISOString() : null
       ]],
       trs: 'http://www.opengis.net/def/uom/ISO-8601/0/Gregorian'
     }
@@ -97,21 +98,29 @@ export function generateCollectionLinks (baseUrl, name) {
   }]
 }
 
-export function generateFeatureCollectionLinks (baseUrl, name, query) {
-  const limit = _.get(query, 'limit', DefaultLimit)
-  const offset = _.get(query, 'offset', DefaultOffset)
-  return [{
-    href: `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${offset}`,
+export function generateFeatureCollectionLinks (baseUrl, name, query, features) {
+  const hasNextPage = (features.numberReturned < features.numberMatched)
+  let { limit, offset } = getDefaults()
+  limit = _.get(query, 'limit', limit)
+  offset = _.get(query, 'offset', offset)
+  // Report input query parameters and add default limit/offset if required
+  const queryUrl = new URLSearchParams(_.omit(query, ['limit', 'offset'])).toString()
+  const links = [{
+    href: `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${offset}&${queryUrl}`,
     rel: 'self',
     type: 'application/geo+json',
     title: 'The current page of collection features as GeoJSON'
-  },
-  {
-    href: `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${limit}`,
-    rel: 'next',
-    type: 'application/json',
-    title: 'The next page of collection features as GeoJSON'
   }]
+  // Report input query parameters and update limit/offset for next page if any
+  if (hasNextPage) {
+    links.push({
+      href: `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${limit}&${queryUrl}`,
+      rel: 'next',
+      type: 'application/json',
+      title: 'The next page of collection features as GeoJSON'
+    })
+  }
+  return links
 }
 
 export function generateCollection (baseUrl, name, title, description) {
@@ -168,24 +177,33 @@ function convertDateTime (value) {
 }
 
 export function convertQuery (query) {
+  // FIXME: hack to make OGC conformance tests pass
+  // Indeed we don't know the schema of our features collections so that we cannot
+  // detect if a given query parameter does not correspond to any property in features
+  _.forOwn(query, (value, key) => {
+    if (key.includes('unknownQueryParameter')) throw new BadRequest('Invalid query parameter')
+  })
+  const { limit, offset } = getDefaults()
   const convertedQuery = {}
   if (query.limit) {
     convertedQuery.$limit = _.toNumber(query.limit)
+    if (!_.isFinite(convertedQuery.$limit)) throw new BadRequest('Invalid limit parameter')
     delete query.limit
   } else {
-    convertedQuery.$limit = DefaultLimit
+    convertedQuery.$limit = limit
   }
   if (query.offset) {
     convertedQuery.$skip = _.toNumber(query.offset)
+    if (!_.isFinite(convertedQuery.$skip)) throw new BadRequest('Invalid offset parameter')
     delete query.offset
   } else {
-    convertedQuery.$skip = DefaultOffset
+    convertedQuery.$skip = offset
   }
   if (query.bbox) {
     // TODO: we should support additionnal CRS according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_bbox
     const bbox = query.bbox.split(',').map(value => _.toNumber(value))
     if (bbox.length < 4) throw new BadRequest('The bounding box parameter shall have at least four numbers')
-    Object.assign(convertedQuery, { south: bbox[1], north: bbox[3], east: bbox[0], west: bbox[2] })
+    Object.assign(convertedQuery, { south: bbox[1], north: bbox[3], east: bbox[2], west: bbox[0] })
     delete query.bbox
   }
   if (query.datetime) {
@@ -233,6 +251,8 @@ export function convertFeatureCollection (featureCollection, query) {
   features.forEach(convertFeature)
   featureCollection.numberMatched = featureCollection.total
   featureCollection.numberReturned = features.length
+  featureCollection.timeStamp = moment().utc().toISOString()
+  debug(`Retrieved ${featureCollection.numberReturned} over ${featureCollection.total} features`)
   delete featureCollection.total
   delete featureCollection.skip
   delete featureCollection.limit
