@@ -158,10 +158,11 @@ export default async function (app) {
     try {
       const name = _.get(req, 'params.name')
       const id = _.get(req, 'params.id')
+      const query = _.get(req, 'query', {})
       debug(`Getting feature ${id} from collection ${name}`)
       const feature = await utils.getFeatureFromService(app, `${apiPath}/${name}`, id)
       res.set('content-type', 'application/geo+json')
-      res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, name, feature) }))
+      res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, name, query, feature) }))
     } catch (error) {
       next(error)
     }
@@ -196,10 +197,11 @@ export default async function (app) {
       const context = _.get(req, 'params.context')
       const name = _.get(req, 'params.name')
       const id = _.get(req, 'params.id')
+      const query = _.get(req, 'query', {})
       debug(`Getting feature ${id} from collection ${name} and context ${context}`)
       const feature = await utils.getFeatureFromService(app, `${apiPath}/${context}/${name}`, id)
       res.set('content-type', 'application/geo+json')
-      res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, `${context}/${name}`, feature) }))
+      res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, `${context}/${name}`, query, feature) }))
     } catch (error) {
       next(error)
     }

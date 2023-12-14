@@ -274,15 +274,19 @@ export async function getFeaturesFromService (app, servicePath, query) {
   return convertFeatureCollection(featureCollection, query)
 }
 
-export function generateFeatureLinks (baseUrl, name, feature) {
+export function generateFeatureLinks (baseUrl, name, query, feature) {
+  // Report input query parameters if any (eg token)
+  let queryUrl = new URLSearchParams(query).toString()
+  if (queryUrl) queryUrl = `?${queryUrl}`
+  
   return [{
-    href: `${baseUrl}/collections/${name}/items/${feature._id}`,
+    href: `${baseUrl}/collections/${name}/items/${feature._id}${queryUrl}`,
     rel: 'self',
     type: 'application/geo+json',
     title: 'The feature as GeoJSON'
   },
   {
-    href: `${baseUrl}/collections/${name}`,
+    href: `${baseUrl}/collections/${name}${queryUrl}`,
     rel: 'collection',
     type: 'application/json',
     title: 'The collection as JSON'
