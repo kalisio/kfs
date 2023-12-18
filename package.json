@@ -25,6 +25,10 @@
     "url": "https://github.com/kalisio/kfs/issues"
   },
   "scripts": {
+    "publish": "git push origin --tags && git push origin",
+    "release:patch": "npm version patch && npm publish --access public",
+    "release:minor": "npm version minor && npm publish --access public",
+    "release:major": "npm version major && npm publish --access public",
     "dev": "nodemon --watch src --exec npm run debug",
     "debug": "cross-env NODE_ENV=development node --inspect src/bin.js",
     "prod": "cross-env NODE_ENV=production node src/bin.js",
