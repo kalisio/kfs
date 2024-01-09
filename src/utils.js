@@ -47,7 +47,7 @@ export function generateCollectionExtent (layer) {
       spatial: {
         bbox: layer.bbox || [-180, -90, 180, 90],
         crs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
-      },
+      }
     }, generateCollectionTemporal(layer))
   }
 }
@@ -246,8 +246,8 @@ export function convertQuery (query) {
 
 export function convertFeature (feature) {
   // Convert internal ID to OGC ID
-    _.set(feature, 'id', _.get(feature, '_id'))
-    _.unset(feature, '_id')
+  _.set(feature, 'id', _.get(feature, '_id'))
+  _.unset(feature, '_id')
   return feature
 }
 
@@ -278,7 +278,7 @@ export function generateFeatureLinks (baseUrl, name, query, feature) {
   // Report input query parameters if any (eg token)
   let queryUrl = new URLSearchParams(query).toString()
   if (queryUrl) queryUrl = `?${queryUrl}`
-  
+
   return [{
     href: `${baseUrl}/collections/${name}/items/${feature._id}${queryUrl}`,
     rel: 'self',
