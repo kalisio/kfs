@@ -9,9 +9,13 @@
 
 **Kalisio Features Service**
 
-**kfs** is a lightweight service that let you distribute geospatial data from applications developed using the [Kalisio Development Kit](KDK) like [Kano](https://kalisio.github.io/kano/) using the [OGC API Features](https://ogcapi.ogc.org/features/) standard (a.k.a. WFS v3).
+**kfs** is a lightweight service that let you distribute geospatial data from applications developed using the [Kalisio Development Kit](KDK) like [Kano](https://kalisio.github.io/kano/) using the [OGC API Features](https://ogcapi.ogc.org/features/) standard (a.k.a. WFS v3). 
 
 Each service-based layer from Kano will generate two or one feature collection(s) depending if probes are used or not.
+
+> Note:
+> 
+> Under-the-hood [feathers-distributed](https://github.com/kalisio/feathers-distributed) is used to access exposed services.
 
 ## API
 
@@ -36,6 +40,28 @@ Here are the environment variables you can use to customize the service:
 | `BASE_URL` | Base service URL to be used to fill links | `http://${hostname}:${port}` |
 | `API_PREFIX` | Prefix used on API routes | `/api`  |
 | `DEBUG` | The namespaces to enable debug output. Set it to `kfs:*` to enable full debug output. |  - |
+
+### local.cjs
+
+By default, **kfs** only exposes [features services](https://kalisio.github.io/kdk/api/map/services.html#features-service) provided by [Kano](https://kalisio.github.io/kano/). You can write a `local.cjs` file to alter the default configuration.
+
+Here is an example file that exposes services from another application:
+
+```js
+module.exports = {
+  distribution: {
+  	// Application key in feathers-distributed
+    remoteServices: (service) => (service.key === 'myapp')
+  },
+  // Declare here any additional service that is not a features service but complies its GeoJson interface
+  services: (serviceName, service) => {
+  	// This specific service complies a GeoJson interface using a specific query parameters
+    if (serviceName === 'myservice') return {
+      query: { geoJson: true }
+    }
+  }
+}
+```
 
 ## Building
 

@@ -107,9 +107,9 @@ export default async function (app) {
     const servicePaths = Object.keys(app.services)
     servicePaths.forEach(path => {
       const service = app.service(path)
-      // Do not expose non features services or local internal services
-      if (!service.remote || (_.get(service, 'remoteOptions.modelName') !== 'features')) return
       const serviceName = stripSlashes(path).replace(stripSlashes(apiPath) + '/', '')
+      // Do not expose e.g. non features services or local internal services
+      if (!utils.isExposedService(serviceName, service)) return
       // Check if already exposed as a layer
       if (_.find(collections, { id: serviceName })) return
       // Create virtual "layer" definition otherwise to expose service

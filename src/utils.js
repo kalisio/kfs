@@ -1,10 +1,12 @@
 import _ from 'lodash'
 import fs from 'fs-extra'
 import path from 'path'
+import config from 'config'
 import { fileURLToPath, URLSearchParams } from 'url'
 import moment from 'moment'
 import envsub from 'envsub'
 import makeDebug from 'debug'
+import { stripSlashes } from '@feathersjs/commons'
 import errors from '@feathersjs/errors'
 import { getDefaults } from './defaults.js'
 
@@ -38,6 +40,25 @@ export async function getApiFile (app, file, query) {
     options: getEnvsubOptions(app, query)
   })
   return JSON.parse(result.outputContents)
+}
+
+export function isFeaturesService (service) {
+  return (_.get(service, 'remoteOptions.modelName') === 'features')
+}
+
+function getServiceOptions (serviceName, service) {
+  const services = config.services
+  if (typeof services === 'function') return services(serviceName, service)
+  else return (services && services[serviceName])
+}
+
+export function isExposedService (serviceName, service) {
+  if (!service.remote) return false
+  // Specific features services can be blacklisted using distribution config
+  if (isFeaturesService(service)) return true
+  // Additional non-features services can be whitelisted in config
+  const options = getServiceOptions(serviceName, service)
+  return !_.isNil(options)
 }
 
 export function generateCollectionExtent (layer) {
@@ -269,6 +290,13 @@ export async function getFeaturesFromService (app, servicePath, query) {
   // Any query parameter is assumed to be a filter on feature properties except reserved ones
   query = _.omit(query, app.get('reservedQueryParameters'))
   query = convertQuery(query)
+  if (!isFeaturesService(featureService)) {
+    const apiPath = app.get('apiPath')
+    const serviceName = stripSlashes(servicePath).replace(stripSlashes(apiPath) + '/', '')
+    const options = getServiceOptions(serviceName, featureService)
+    // Specific query parameters to make service compliant with features service interfaces
+    if (options.query) Object.assign(query, options.query)
+  }
   debug(`Requesting feature collection on path ${servicePath}`, query)
   const featureCollection = await featureService.find({ query })
   return convertFeatureCollection(featureCollection, query)

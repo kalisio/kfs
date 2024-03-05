@@ -4,6 +4,7 @@ import chailint from 'chai-lint'
 import assert from 'assert'
 import _ from 'lodash'
 import path from 'path'
+import config from 'config'
 import fs from 'fs-extra'
 import request from 'superagent'
 import { fileURLToPath } from 'url'
@@ -14,10 +15,15 @@ import { getDefaults } from '../src/defaults.js'
 import createServer from '../src/main.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const modelsPath = path.join(__dirname, 'models')
+const servicesPath = path.join(__dirname, 'services')
 const { util, expect } = chai
 
 // Test suite based on using the catalog service or not
-function runTests (catalog) {
+function runTests (options = {
+  catalog: true,
+  features: true
+}) {
   let app, server, baseUrl,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
     nbStations, nbObservations, feature
@@ -38,13 +44,13 @@ function runTests (catalog) {
       key: 'kfs-test',
       // Distribute only the test services
       services: (service) => service.path.includes('hubeau') ||
-                (catalog && service.path.includes('catalog')),
+                (options.catalog && service.path.includes('catalog')),
       // Distribute at least modelName and pagination for KFS to know about features services
       remoteServiceOptions: () => ['modelName', 'paginate']
     }))
     await kapp.db.connect()
     // Create a global catalog service
-    if (catalog) {
+    if (options.catalog) {
       await createCatalogService.call(kapp)
       catalogService = kapp.getService('catalog')
       expect(catalogService).toExist()
@@ -57,7 +63,7 @@ function runTests (catalog) {
     const layers = await fs.readJson(path.join(__dirname, 'config/layers.json'))
     expect(layers.length > 0)
     // Create layers
-    if (catalog) defaultLayers = await catalogService.create(layers)
+    if (options.catalog) defaultLayers = await catalogService.create(layers)
     else defaultLayers = layers
     // Single layer case
     if (!Array.isArray(defaultLayers)) defaultLayers = [defaultLayers]
@@ -69,11 +75,19 @@ function runTests (catalog) {
     const hubeauLayer = _.find(defaultLayers, { name: 'Layers.HUBEAU' })
     expect(hubeauLayer).toExist()
     expect(hubeauLayer.probeService === 'hubeau-stations').beTrue()
-    await createFeaturesService.call(kapp, {
-      collection: hubeauLayer.probeService,
-      featureId: hubeauLayer.featureId,
-      paginate: { default: nbPerPage }
-    })
+    if (options.features) {
+      await createFeaturesService.call(kapp, {
+        collection: hubeauLayer.probeService,
+        featureId: hubeauLayer.featureId,
+        paginate: { default: nbPerPage }
+      })
+    } else {
+      await kapp.createService('hubeau-stations', {
+        modelsPath,
+        servicesPath,
+        paginate: { default: nbPerPage }
+      })
+    }
     hubeauStationsService = kapp.getService(hubeauLayer.probeService)
     expect(hubeauStationsService).toExist()
     // Feed the collection
@@ -90,11 +104,19 @@ function runTests (catalog) {
     const hubeauLayer = _.find(defaultLayers, { name: 'Layers.HUBEAU' })
     expect(hubeauLayer).toExist()
     expect(hubeauLayer.service === 'hubeau-observations').beTrue()
-    await createFeaturesService.call(kapp, {
-      collection: hubeauLayer.service,
-      featureId: hubeauLayer.featureId,
-      paginate: { default: nbPerPage }
-    })
+    if (options.features) {
+      await createFeaturesService.call(kapp, {
+        collection: hubeauLayer.service,
+        featureId: hubeauLayer.featureId,
+        paginate: { default: nbPerPage }
+      })
+    } else {
+      await kapp.createService('hubeau-observations', {
+        modelsPath,
+        servicesPath,
+        paginate: { default: nbPerPage }
+      })
+    }
     hubeauObsService = kapp.getService(hubeauLayer.service)
     expect(hubeauObsService).toExist()
     // Feed the collection
@@ -165,7 +187,7 @@ function runTests (catalog) {
     expect(response.body.itemType).to.equal('feature')
     expect(response.body.title).toExist()
     // When not using layers we don't have this information
-    if (catalog) {
+    if (options.catalog) {
       expect(response.body.description).toExist()
       expect(response.body.extent).toExist()
       expect(response.body.extent.spatial).toExist()
@@ -426,7 +448,7 @@ function runTests (catalog) {
     if (server) await server.close()
     finalize(kapp)
     fs.emptyDirSync(path.join(__dirname, 'logs'))
-    if (catalog) await catalogService.Model.drop()
+    if (options.catalog) await catalogService.Model.drop()
     await hubeauStationsService.Model.drop()
     await hubeauObsService.Model.drop()
     await kapp.db.disconnect()
@@ -441,7 +463,24 @@ describe('kfs', () => {
     expect(typeof createServer).to.equal('function')
   })
 
-  // Run test with and without catalog
-  runTests(false)
-  runTests(true)
+  // Run test with/without catalog
+  // and with/without features services
+  runTests({
+    catalog: false,
+    features: true
+  })
+  runTests({
+    catalog: true,
+    features: true
+  })
+  // Expose specific non-features service
+  config.services = (serviceName, service) => {
+    if (serviceName.includes('hubeau')) return {
+      query: { geoJson: true }
+    }
+  }
+  runTests({
+    catalog: false,
+    features: false
+  })
 })
