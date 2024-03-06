@@ -202,7 +202,7 @@ function convertDateTime (value) {
   }
 }
 
-export function convertQuery (query) {
+export function convertQuery (query, options = { properties: true }) {
   // FIXME: hack to make OGC conformance tests pass
   // Indeed we don't know the schema of our features collections so that we cannot
   // detect if a given query parameter does not correspond to any property in features
@@ -251,7 +251,7 @@ export function convertQuery (query) {
   // Any other query parameter is assumed to be a filter on feature properties
   _.forOwn(query, (value, key) => {
     // Add implicit properties object
-    key = `properties.${key}`
+    if (options.properties) key = `properties.${key}`
     // Try to automatically convert to target types
     const lowerCaseValue = _.lowerCase(value)
     const date = moment(value, moment.ISO_8601)
@@ -287,14 +287,16 @@ export function convertFeatureCollection (featureCollection, query) {
 
 export async function getFeaturesFromService (app, servicePath, query) {
   const featureService = app.service(servicePath)
+  const apiPath = app.get('apiPath')
+  const serviceName = stripSlashes(servicePath).replace(stripSlashes(apiPath) + '/', '')
+  const options = getServiceOptions(serviceName, featureService)
   // Any query parameter is assumed to be a filter on feature properties except reserved ones
   query = _.omit(query, app.get('reservedQueryParameters'))
-  query = convertQuery(query)
+  query = convertQuery(query, {
+    properties: _.get(options, 'properties', isFeaturesService(featureService))
+  })
   if (!isFeaturesService(featureService)) {
-    const apiPath = app.get('apiPath')
-    const serviceName = stripSlashes(servicePath).replace(stripSlashes(apiPath) + '/', '')
-    const options = getServiceOptions(serviceName, featureService)
-    // Specific query parameters to make service compliant with features service interfaces
+    // Specific query parameters to make service compliant with features service interfaces ?
     if (options.query) Object.assign(query, options.query)
   }
   debug(`Requesting feature collection on path ${servicePath}`, query)

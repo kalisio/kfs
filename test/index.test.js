@@ -476,6 +476,7 @@ describe('kfs', () => {
   // Expose specific non-features service
   config.services = (serviceName, service) => {
     if (serviceName.includes('hubeau')) return {
+      properties: true,
       query: { geoJson: true }
     }
   }
