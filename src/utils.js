@@ -257,9 +257,11 @@ export function convertQuery (query, options = { properties: true }) {
     const date = moment(value, moment.ISO_8601)
     const number = _.toNumber(value)
     const boolean = (lowerCaseValue === 'true') || (lowerCaseValue === 'false')
+    const nullable = (lowerCaseValue === 'null')
     if (date.isValid()) convertedQuery[key] = date.toISOString()
     else if (!Number.isNaN(number)) convertedQuery[key] = number
     else if (boolean) convertedQuery[key] = lowerCaseValue === 'true'
+    else if (nullable) convertedQuery[key] = null
     else convertedQuery[key] = value
   })
   return convertedQuery
