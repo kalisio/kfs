@@ -6,7 +6,7 @@ export default {
   before: {
     all: [kdkCoreHooks.marshallTimeQuery],
     find: [kdkCoreHooks.marshallComparisonQuery, kdkMapHooks.marshallSpatialQuery],
-    get: [],
+    get: [kdkMapHooks.marshallGeoJsonQuery],
     create: [kdkCoreHooks.processTimes(['time'])],
     update: [],
     patch: [],
@@ -16,7 +16,7 @@ export default {
   after: {
     all: [],
     find: [kdkMapHooks.asGeoJson()],
-    get: [],
+    get: [kdkMapHooks.asGeoJson()],
     create: [],
     update: [],
     patch: [],

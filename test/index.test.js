@@ -258,6 +258,7 @@ function runTests (options = {
   it('get item', async () => {
     const response = await request.get(`${baseUrl}/collections/hubeau-stations/items/${feature._id}`)
     expect(response.body.id).toExist()
+    expect(response.body.id.toString()).to.equal(feature._id.toString())
     expect(response.body.properties).toExist()
     expect(response.body.links).toExist()
     expect(response.body.links.length).to.equal(2)
