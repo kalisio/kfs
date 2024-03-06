@@ -312,7 +312,7 @@ export function generateFeatureLinks (baseUrl, name, query, feature) {
   if (queryUrl) queryUrl = `?${queryUrl}`
 
   return [{
-    href: `${baseUrl}/collections/${name}/items/${feature._id}${queryUrl}`,
+    href: `${baseUrl}/collections/${name}/items/${feature.id}${queryUrl}`,
     rel: 'self',
     type: 'application/geo+json',
     title: 'The feature as GeoJSON'
@@ -328,6 +328,14 @@ export function generateFeatureLinks (baseUrl, name, query, feature) {
 export async function getFeatureFromService (app, servicePath, id) {
   debug(`Requesting feature on path ${servicePath}`, id)
   const featureService = app.service(servicePath)
-  const feature = await featureService.get(id)
+  const apiPath = app.get('apiPath')
+  const serviceName = stripSlashes(servicePath).replace(stripSlashes(apiPath) + '/', '')
+  const options = getServiceOptions(serviceName, featureService)
+  const query = {}
+  if (!isFeaturesService(featureService)) {
+    // Specific query parameters to make service compliant with features service interfaces ?
+    if (options.query) Object.assign(query, options.query)
+  }
+  const feature = await featureService.get(id, { query })
   return convertFeature(feature)
 }
