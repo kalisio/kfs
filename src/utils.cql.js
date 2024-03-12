@@ -11,11 +11,14 @@ export function convertSpatialTextCqlExpression (expression, operator) {
   const cqlJson = {}
   if (expression.startsWith(`${operator}(`)) {
     // Omit enclosing operator to manage operands
-    expression = expression.replace(`${operator}(`, '').substring(0, expression.length - 1)
+    expression = expression.replace(`${operator}(`, '')
+    expression = expression.substring(0, expression.length - 1)
     const index = expression.indexOf(',')
     expression = [expression.substring(0, index), expression.substring(index + 1)]
     if (expression.length !== 2) throw new BadRequest(`Invalid ${operator} operator specification`)
-    cqlJson[_.lowerCase(operator)] = [{ property: expression[0] }, parseWtk(expression[1])]
+    const geometry = parseWtk(expression[1])
+    if (!geometry) throw new BadRequest(`Invalid WTK geometry specification ${expression[1]}`)
+    cqlJson[_.lowerCase(operator)] = [{ property: expression[0] }, geometry]
   }
   return cqlJson
 }
@@ -156,6 +159,9 @@ export function convertCqlQuery (query) {
   // We experimented various BNF parser without success (bnf and abnf nodejs modules, OpenLayers v2 CQL parser)
   //if (encoding !== 'cql-json') throw new BadRequest('Only JSON encoding of CQL is supported')
   let filter = _.get(query, 'filter')
-  if (encoding === 'cql-text') filter = convertTextToJsonCql(filter)
+  if (encoding === 'cql-text') {
+    filter = convertTextToJsonCql(filter)
+    debug('Converted CQL expression from text', filter)
+  }
   return convertCqlExpression(filter)
 }
