@@ -1,22 +1,31 @@
 import _ from 'lodash'
 import makeDebug from 'debug'
 import errors from '@feathersjs/errors'
-import { parse } from 'wellknown'
+import { parse as parseWtk } from 'wellknown'
 import { convertValue, convertDateTime } from './utils.js'
 
 const debug = makeDebug('kfs:utils:cql')
 const { BadRequest } = errors
 
-export function convertTextToJsonCql (expression) {
+export function convertSpatialTextCqlExpression (expression, operator) {
   const cqlJson = {}
-  if (expression.startsWith('INTERSECTS(')) {
+  if (expression.startsWith(`${operator}(`)) {
     // Omit enclosing operator to manage operands
-    expression = expression.replace('INTERSECTS(', '').substring(0, expression.length - 1)
+    expression = expression.replace(`${operator}(`, '').substring(0, expression.length - 1)
     const index = expression.indexOf(',')
     expression = [expression.substring(0, index), expression.substring(index + 1)]
-    if (expression.length !== 2) throw new BadRequest('Invalid intersects operator specification')
-    cqlJson.intersects = [{ property: expression[0] }, parse(expression[1])]
+    if (expression.length !== 2) throw new BadRequest(`Invalid ${operator} operator specification`)
+    cqlJson[_.lowerCase(operator)] = [{ property: expression[0] }, parseWtk(expression[1])]
   }
+  return cqlJson
+}
+
+export function convertTextToJsonCql (expression) {
+  const cqlJson = {}
+  const operators = ['INTERSECTS', 'WITHIN']
+  operators.forEach(operator => {
+    Object.assign(cqlJson, convertSpatialTextCqlExpression(expression, operator))
+  })
   return cqlJson
 }
 
@@ -57,20 +66,20 @@ export function convertTemporalCqlExpression (expression) {
   const query = {}
   if (expression.before) {
     const property = _.get(expression, 'before[0].property')
-    const lower = _.get(expression, 'before[1]')
-    if (!property || !lower) throw new BadRequest('Invalid before operator specification')
-    query[property] = { $lt: convertDateTime(lower) }
+    const upper = _.get(expression, 'before[1]')
+    if (!property || !upper) throw new BadRequest('Invalid before operator specification')
+    query[property] = { $lt: convertDateTime(upper) }
   } else if (expression.after) {
     const property = _.get(expression, 'after[0].property')
-    const upper = _.get(expression, 'after[1]')
-    if (!property || !upper) throw new BadRequest('Invalid after operator specification')
-    query[property] = { $gt: convertDateTime(upper) }
+    const lower = _.get(expression, 'after[1]')
+    if (!property || !lower) throw new BadRequest('Invalid after operator specification')
+    query[property] = { $gt: convertDateTime(lower) }
   } else if (expression.during) {
     const property = _.get(expression, 'during[0].property')
     const lower = _.get(expression, 'during[1][0]')
     const upper = _.get(expression, 'during[1][1]')
     if (!property || !lower || !upper) throw new BadRequest('Invalid during operator specification')
-    query[property] = { $gte: convertDateTime(upper), $lte: convertDateTime(lower) }
+    query[property] = { $gte: convertDateTime(lower), $lte: convertDateTime(upper) }
   }
   return query
 }

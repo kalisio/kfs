@@ -487,6 +487,22 @@ function runTests (options = {
   // Let enough time to process
     .timeout(5000)
 
+  it('cql temporal expressions', async () => {
+    // Data in range 2018-10-22T22:00:00.000Z/2018-10-24T08:00:00.000Z every hour
+    let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
+      .query({ 'filter-lang': 'cql-json' })
+      .send({ during: [{ property: 'time' }, ['2018-10-22T22:00:00.000Z', '2018-10-24T08:00:00.000Z']]})
+    // First day = 3 obs, second day 24 obs, third day 8 obs
+    const nbObservations = 3 + 24 + 8
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbObservations)
+    expect(response.body.numberReturned).to.equal(nbObservations < nbPerPage ? nbObservations : nbPerPage)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
   it('cql spatial expressions', async () => {
     let response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
