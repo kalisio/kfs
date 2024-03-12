@@ -23,7 +23,15 @@ Please refer to the [OGC API Features](https://ogcapi.ogc.org/features/) standar
 * only the Part 1 of the standard is implemented
 * only the [GeoJson encoding](https://docs.opengeospatial.org/is/17-069r4/17-069r4.html#_requirements_class_geojson) is supported
 * only a [bbox in WGS 84 CRS](https://docs.ogc.org/is/17-069r4/17-069r4.html#_parameter_bbox) is supported
-* CQL filtering is not yet supported
+* the following CQL filtering operators are supported
+  * logical operators `and`, `or`, `not`
+  * comparison operators `eq`, `lt`, `gt`, `lte`, `gte`
+  * spatial operators `intersects`, `within`
+  * temporal operators `before`, `after`, `during` (targetting instant property not interval)
+
+> Note:
+> 
+> Only CQL JSON encoding is fully supported, only spatial filters are supported for CQL in text encoding.
 
 ### /healthcheck (GET)
 

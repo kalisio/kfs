@@ -9,6 +9,7 @@ import makeDebug from 'debug'
 import { stripSlashes } from '@feathersjs/commons'
 import errors from '@feathersjs/errors'
 import { getDefaults } from './defaults.js'
+import { convertCqlQuery } from './utils.cql.js'
 
 const debug = makeDebug('kfs:utils')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -181,7 +182,22 @@ export function generateCollections (baseUrl, layer, query) {
   return collections
 }
 
-function convertDateTime (value) {
+export function convertValue (value) {
+  if (Array.isArray(value)) return value.map(item => convertValue(item))
+  // Try to automatically convert to target types
+  const lowerCaseValue = _.lowerCase(value)
+  const date = moment(value, moment.ISO_8601)
+  const number = _.toNumber(value)
+  const boolean = (lowerCaseValue === 'true') || (lowerCaseValue === 'false')
+  const nullable = (lowerCaseValue === 'null')
+  if (date.isValid()) return date.toISOString()
+  else if (!Number.isNaN(number)) return number
+  else if (boolean) return lowerCaseValue === 'true'
+  else if (nullable) return null
+  else return value
+}
+
+export function convertDateTime (value) {
   // We need to support different formats according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_datetime:
   // <datetime>, <start>/<end>, <start>/.., ../<end>
   // We additionnaly support <start>/<duration>, <duration>/<end>
@@ -248,21 +264,18 @@ export function convertQuery (query, options = { properties: true }) {
     Object.assign(convertedQuery, timeQuery)
     delete query.datetime
   }
+  if (query.filter) {
+    const cqlQuery = convertCqlQuery(query)
+    debug('Processed CQL query:', cqlQuery)
+    Object.assign(convertedQuery, cqlQuery)
+    delete query.filter
+    delete query['filter-lang']
+  }
   // Any other query parameter is assumed to be a filter on feature properties
   _.forOwn(query, (value, key) => {
     // Add implicit properties object
     if (options.properties) key = `properties.${key}`
-    // Try to automatically convert to target types
-    const lowerCaseValue = _.lowerCase(value)
-    const date = moment(value, moment.ISO_8601)
-    const number = _.toNumber(value)
-    const boolean = (lowerCaseValue === 'true') || (lowerCaseValue === 'false')
-    const nullable = (lowerCaseValue === 'null')
-    if (date.isValid()) convertedQuery[key] = date.toISOString()
-    else if (!Number.isNaN(number)) convertedQuery[key] = number
-    else if (boolean) convertedQuery[key] = lowerCaseValue === 'true'
-    else if (nullable) convertedQuery[key] = null
-    else convertedQuery[key] = value
+    convertedQuery[key] = convertValue(value)
   })
   return convertedQuery
 }

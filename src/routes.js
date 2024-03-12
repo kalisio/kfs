@@ -154,6 +154,20 @@ export default async function (app) {
       next(error)
     }
   })
+  app.post(`${apiPath}/collections/:name/items`, async (req, res, next) => {
+    try {
+      const name = _.get(req, 'params.name')
+      const query = _.get(req, 'query', {})
+      // In this case the CQL filter is given as body
+      query.filter = _.get(req, 'body')
+      debug(`Getting features for collection ${name}`)
+      const features = await utils.getFeaturesFromService(app, `${apiPath}/${name}`, query)
+      res.set('content-type', 'application/geo+json')
+      res.json(Object.assign(features, { links: utils.generateFeatureCollectionLinks(baseUrl, name, query, features) }))
+    } catch (error) {
+      next(error)
+    }
+  })
   app.get(`${apiPath}/collections/:name/items/:id`, async (req, res, next) => {
     try {
       const name = _.get(req, 'params.name')

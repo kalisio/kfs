@@ -119,7 +119,8 @@ function runTests (options = {
     }
     hubeauObsService = kapp.getService(hubeauLayer.service)
     expect(hubeauObsService).toExist()
-    // Feed the collection
+    // Feed the collection, most observations have H = 0.33 with a few exceptions:
+    // First one with H = 0.63, second to last four ones with H = 0.43, last four ones with H = 0.53
     const observations = fs.readJsonSync(path.join(__dirname, 'data/hubeau.observations.json'))
     nbObservations = observations.length
     await hubeauObsService.create(observations)
@@ -440,6 +441,73 @@ function runTests (options = {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(4)
     expect(response.body.numberReturned).to.equal(3)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('cql comparison expressions', async () => {
+    let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
+      .query({ 'filter-lang': 'cql-json', limit: 3 })
+      .send({ eq: [{ property: 'properties.H' }, 0.63] })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
+    response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
+      .query({ 'filter-lang': 'cql-json', limit: 3 })
+      .send({ lt: [{ property: 'properties.H' }, 0.4] })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbObservations - 9)
+    expect(response.body.numberReturned).to.equal(3)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('cql logical expressions', async () => {
+    let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
+      .query({ 'filter-lang': 'cql-json', limit: 3 })
+      .send({ and: [{ gte: [{ property: 'properties.H' }, 0.63] }, { lte: [{ property: 'properties.H' }, 0.63] }] })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
+    response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
+      .query({ 'filter-lang': 'cql-json', limit: 3 })
+      .send({ not: [{ lt: [{ property: 'properties.H' }, 0.63] }] })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('cql spatial expressions', async () => {
+    let response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-json', limit: 3 })
+      .send({ intersects: [{ property: 'geometry' }, { type: 'Polygon', coordinates: [[[7.42, 48.63], [7.43, 48.63], [7.43, 48.64], [7.42, 48.64], [7.42, 48.63]]] }] })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('cql text expressions', async () => {
+    let response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `INTERSECTS(geometry,POLYGON((7.42 48.63, 7.43 48.63, 7.43 48.64, 7.42 48.64, 7.42 48.63)))`, limit: 3 })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
   })
   // Let enough time to process
     .timeout(5000)
