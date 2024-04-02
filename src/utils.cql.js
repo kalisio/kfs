@@ -157,7 +157,7 @@ export function convertCqlQuery (query) {
   const encoding = _.get(query, 'filter-lang', 'cql-json')
   // TODO: we support a small subset of text encoding
   // We experimented various BNF parser without success (bnf and abnf nodejs modules, OpenLayers v2 CQL parser)
-  //if (encoding !== 'cql-json') throw new BadRequest('Only JSON encoding of CQL is supported')
+  // if (encoding !== 'cql-json') throw new BadRequest('Only JSON encoding of CQL is supported')
   let filter = _.get(query, 'filter')
   if (encoding === 'cql-text') {
     filter = convertTextToJsonCql(filter)
