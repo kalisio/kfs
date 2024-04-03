@@ -9,7 +9,7 @@ import helmet from 'helmet'
 import feathers from '@feathersjs/feathers'
 import configuration from '@feathersjs/configuration'
 import express from '@feathersjs/express'
-import distribution from '@kalisio/feathers-distributed'
+import distribution, { finalize } from '@kalisio/feathers-distributed'
 import hooks from './hooks.js'
 import channels from './channels.js'
 import routes from './routes.js'
@@ -55,6 +55,16 @@ export default async function createServer () {
   process.on('unhandledRejection', (reason, p) =>
     app.logger.error('Unhandled Rejection: ', reason)
   )
+  process.on('SIGINT', async () => {
+    app.logger.info('Received SIGINT signal running teardown')
+    await app.teardown()
+    process.exit(0)
+  })
+  process.on('SIGTERM', async () => {
+    app.logger.info('Received SIGTERM signal running teardown')
+    await app.teardown()
+    process.exit(0)
+  })
 
   // Register hooks
   app.hooks(hooks)
@@ -81,7 +91,7 @@ export default async function createServer () {
     app.logger.info('Configuring HTTP server at port ' + port.toString())
     server = await app.listen(port)
   }
-  server.on('close', () => distribution.finalize(app))
+  server.on('close', () => finalize(app))
   server.app = app
   server.app.logger.info('Server started listening')
 
