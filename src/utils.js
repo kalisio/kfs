@@ -166,7 +166,7 @@ export function generateCollection (baseUrl, name, title, description, query) {
 }
 
 export function generateCollections (baseUrl, layer, query) {
-  debug('Generating collections for layer', layer)
+  debug(`Generating collections for layer ${layer.name}`)
   const collections = []
   // Take i18n into account if any
   const title = _.get(layer, `i18n.en.${layer.name}`, layer.name)

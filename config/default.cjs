@@ -1,5 +1,7 @@
 const path = require('path')
 const winston = require('winston')
+const express = require('@feathersjs/express')
+const commonHooks = require('feathers-hooks-common')
 
 const host = process.env.HOSTNAME || 'localhost'
 const port = process.env.PORT || 8081
@@ -43,7 +45,16 @@ module.exports = {
   },
   distribution: { // Distribute no services simply use remote ones from Kano
     services: (service) => false,
+    // Use only Kano services
     remoteServices: (service) => (service.key === 'kano'),
+    // We don't care about events
+    distributedEvents: [],
+    // https://github.com/kalisio/feathers-distributed#remote-services
+    // We don't want to expose distributed services by Kano, simply consume it internally
+    //middlewares: { after: express.errorHandler() },
+    hooks: {
+      before: { all: [commonHooks.disallow('external')] }
+    },
     healthcheckPath: apiPath + '/distribution/'
   }
 }
