@@ -194,6 +194,8 @@ export function convertValue (value) {
   else if (!Number.isNaN(number)) return number
   else if (boolean) return lowerCaseValue === 'true'
   else if (nullable) return null
+  // Enclosing quotes to avoid automated conversion to number eg '1000'
+  else if (value.startsWith('\'') && value.endsWith('\'')) return value.substring(1, value.length-1)
   else return value
 }
 

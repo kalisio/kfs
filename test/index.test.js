@@ -307,6 +307,18 @@ function runTests (options = {
   // Let enough time to process
     .timeout(5000)
 
+  it('get items with filtering on number-like property but stored as string', async () => {
+    const response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ CdCommune: '\'67520\'' })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
   it('get items with incomplete bbox', async () => {
     try {
       await request.get(`${baseUrl}/collections/hubeau-stations/items`)
