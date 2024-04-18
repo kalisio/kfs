@@ -6,6 +6,8 @@ import { convertValue, convertDateTime } from './utils.js'
 
 const debug = makeDebug('kfs:utils:cql')
 const { BadRequest } = errors
+// Reserved properties at root level ?
+const ReservedProperties = ['time', 'geometry']
 
 export function convertSpatialTextCqlExpression (expression, operator) {
   const cqlJson = {}
@@ -23,11 +25,27 @@ export function convertSpatialTextCqlExpression (expression, operator) {
   return cqlJson
 }
 
+export function convertIsNullTextCqlExpression (expression, operator) {
+  let cqlJson = {}
+  if (expression.endsWith(operator)) {
+    // Omit operator to manage operand
+    let property = expression.replace(operator, '').trim()
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
+    cqlJson = { isNull: { property } }
+    if (operator.startsWith('NOT')) cqlJson = { not: cqlJson }
+  }
+  return cqlJson
+}
+
 export function convertTextToJsonCql (expression) {
   const cqlJson = {}
-  const operators = ['INTERSECTS', 'WITHIN']
+  let operators = ['INTERSECTS', 'WITHIN']
   operators.forEach(operator => {
     Object.assign(cqlJson, convertSpatialTextCqlExpression(expression, operator))
+  })
+  operators = ['IS NOT NULL', 'IS NULL']
+  operators.forEach(operator => {
+    Object.assign(cqlJson, convertIsNullTextCqlExpression(expression, operator))
   })
   return cqlJson
 }
@@ -35,7 +53,8 @@ export function convertTextToJsonCql (expression) {
 export function convertComparisonCqlOperator (expression, operator) {
   const query = {}
   if (_.has(expression, operator)) {
-    const property = _.get(expression, `${operator}[0].property`)
+    let property = _.get(expression, `${operator}[0].property`)
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
     const value = _.get(expression, `${operator}[1]`)
     if (!property) throw new BadRequest('Invalid comparison operator specification')
     query[property] = { [`$${operator}`]: convertValue(value) }
@@ -50,14 +69,16 @@ export function convertComparisonCqlExpression (expression) {
     Object.assign(query, convertComparisonCqlOperator(expression, operator))
   })
   if (expression.between) {
-    const property = _.get(expression, 'between.value.property')
+    let property = _.get(expression, 'between.value.property')
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
     if (!property) throw new BadRequest('Invalid between operator specification')
     const lower = _.get(expression, 'between.lower')
     const upper = _.get(expression, 'between.upper')
     query[property] = { $gte: convertValue(lower), $lte: convertValue(upper) }
   }
   if (expression.in) {
-    const property = _.get(expression, 'in.value.property')
+    let property = _.get(expression, 'in.value.property')
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
     if (!property) throw new BadRequest('Invalid in operator specification')
     const list = _.get(expression, 'in.list')
     query[property] = { $in: convertValue(list) }
@@ -68,17 +89,20 @@ export function convertComparisonCqlExpression (expression) {
 export function convertTemporalCqlExpression (expression) {
   const query = {}
   if (expression.before) {
-    const property = _.get(expression, 'before[0].property')
+    let property = _.get(expression, 'before[0].property')
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
     const upper = _.get(expression, 'before[1]')
     if (!property || !upper) throw new BadRequest('Invalid before operator specification')
     query[property] = { $lt: convertDateTime(upper) }
   } else if (expression.after) {
-    const property = _.get(expression, 'after[0].property')
+    let property = _.get(expression, 'after[0].property')
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
     const lower = _.get(expression, 'after[1]')
     if (!property || !lower) throw new BadRequest('Invalid after operator specification')
     query[property] = { $gt: convertDateTime(lower) }
   } else if (expression.during) {
-    const property = _.get(expression, 'during[0].property')
+    let property = _.get(expression, 'during[0].property')
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
     const lower = _.get(expression, 'during[1][0]')
     const upper = _.get(expression, 'during[1][1]')
     if (!property || !lower || !upper) throw new BadRequest('Invalid during operator specification')
@@ -117,6 +141,8 @@ export function convertLogicalCqlOperator (expression, operator) {
   const query = {}
   if (_.has(expression, operator)) {
     if (operator !== 'not') query[`$${operator}`] = []
+    // NOT IS NULL predicate is managed by a dedicated function
+    else if (_.has(expression, 'not.isNull')) return
     _.get(expression, operator).forEach(subexpression => {
       const subquery = convertCqlExpression(subexpression)
       if (operator === 'not') {
@@ -142,10 +168,26 @@ export function convertLogicalCqlExpression (expression) {
   return query
 }
 
+export function convertIsNullCqlExpression (expression) {
+  const query = {}
+  let property = _.get(expression, 'isNull.property')
+  if (property) {
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
+    query[property] = { $exists: false }
+  }
+  property = _.get(expression, 'not.isNull.property')
+  if (property) {
+    if (!ReservedProperties.includes(property)) property = `properties.${property}`
+    query[property] = { $exists: true }
+  }
+  return query
+}
+
 export function convertCqlExpression (expression) {
   const query = {}
   // Merge as different operators might target the same property
   Object.assign(query,
+    convertIsNullCqlExpression(expression),
     convertLogicalCqlExpression(expression),
     convertComparisonCqlExpression(expression),
     convertTemporalCqlExpression(expression),
