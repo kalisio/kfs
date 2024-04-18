@@ -47,6 +47,17 @@ export function isFeaturesService (service) {
   return (_.get(service, 'remoteOptions.modelName') === 'features')
 }
 
+export function getServicePagination (service) {
+  let { limit, offset } = getDefaults()
+  // If a default is defined on service use it
+  const defaultLimit = _.get(service, 'remoteOptions.paginate.default')
+  if (defaultLimit && (defaultLimit < limit)) limit = defaultLimit
+  const max = _.get(service, 'remoteOptions.paginate.max')
+  // If a max is defined on service check it
+  if (max && (limit > max)) limit = max
+  return { limit, offset }
+}
+
 function getServiceOptions (serviceName, service) {
   const services = config.services
   if (typeof services === 'function') return services(serviceName, service)
@@ -125,23 +136,27 @@ export function generateCollectionLinks (baseUrl, name, query) {
   }]
 }
 
-export function generateFeatureCollectionLinks (baseUrl, name, query, features) {
-  const hasNextPage = (features.numberReturned < features.numberMatched)
-  let { limit, offset } = getDefaults()
-  limit = _.get(query, 'limit', limit)
-  offset = _.get(query, 'offset', offset)
-  // Report input query parameters and add default limit/offset if required
+export function generateFeatureCollectionLinks (baseUrl, name, query, pagination, features) {
+  let { limit, offset } = pagination
+  limit = _.toNumber(_.get(query, 'limit', limit))
+  offset = _.toNumber(_.get(query, 'offset', offset))
+  const hasNextPage = ((features.numberReturned + offset) < features.numberMatched)
+  // Report input query parameters
   const queryUrl = new URLSearchParams(_.omit(query, ['limit', 'offset'])).toString()
+  let href = `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${offset}`
+  if (queryUrl) href += `&${queryUrl}`
   const links = [{
-    href: `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${offset}&${queryUrl}`,
+    href,
     rel: 'self',
     type: 'application/geo+json',
     title: 'The current page of collection features as GeoJSON'
   }]
   // Report input query parameters and update limit/offset for next page if any
   if (hasNextPage) {
+    href = `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${offset + limit}`
+    if (queryUrl) href += `&${queryUrl}`
     links.push({
-      href: `${baseUrl}/collections/${name}/items?limit=${limit}&offset=${limit}&${queryUrl}`,
+      href,
       rel: 'next',
       type: 'application/json',
       title: 'The next page of collection features as GeoJSON'
@@ -240,21 +255,17 @@ export function convertQuery (query, options = { properties: true }) {
   _.forOwn(query, (value, key) => {
     if (key.includes('unknownQueryParameter')) throw new BadRequest('Invalid query parameter')
   })
-  const { limit, offset } = getDefaults()
+
   const convertedQuery = {}
   if (query.limit) {
     convertedQuery.$limit = _.toNumber(query.limit)
     if (!_.isFinite(convertedQuery.$limit)) throw new BadRequest('Invalid limit parameter')
     delete query.limit
-  } else {
-    convertedQuery.$limit = limit
   }
   if (query.offset) {
     convertedQuery.$skip = _.toNumber(query.offset)
     if (!_.isFinite(convertedQuery.$skip)) throw new BadRequest('Invalid offset parameter')
     delete query.offset
-  } else {
-    convertedQuery.$skip = offset
   }
   if (query.bbox) {
     // TODO: we should support additionnal CRS according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_bbox
@@ -315,7 +326,7 @@ export function convertFeature (feature) {
   return feature
 }
 
-export function convertFeatureCollection (featureCollection, query) {
+export function convertFeatureCollection (featureCollection) {
   const features = _.get(featureCollection, 'features', [])
   features.forEach(convertFeature)
   featureCollection.numberMatched = featureCollection.total
@@ -331,23 +342,32 @@ export function convertFeatureCollection (featureCollection, query) {
 export async function getFeaturesFromService (app, servicePath, query) {
   const featureService = app.service(servicePath)
   const apiPath = app.get('apiPath')
+  const baseUrl = app.get('baseUrl')
   const serviceName = stripSlashes(servicePath).replace(stripSlashes(apiPath) + '/', '')
   const options = getServiceOptions(serviceName, featureService)
+  // Keep track of original query as it will be updated by conversion
+  const originalQuery = _.cloneDeep(query)
   // Any query parameter is assumed to be a filter on feature properties except reserved ones
   query = _.omit(query, app.get('reservedQueryParameters'))
-  query = convertQuery(query, {
+  const convertedQuery = convertQuery(query, {
     properties: _.get(options, 'properties', isFeaturesService(featureService))
   })
   if (!isFeaturesService(featureService)) {
     // Specific query parameters to make service compliant with features service interfaces ?
-    if (options.query) Object.assign(query, options.query)
+    if (options.query) Object.assign(convertedQuery, options.query)
   } else {
     // Default sort order is descending time if not provided
-    if (!_.has(query, '$sort.time')) _.set(query, '$sort.time', -1)
+    if (!_.has(convertedQuery, '$sort.time')) _.set(convertedQuery, '$sort.time', -1)
   }
-  debug(`Requesting feature collection on path ${servicePath}`, query)
-  const featureCollection = await featureService.find({ query })
-  return convertFeatureCollection(featureCollection, query)
+  // Default pagination
+  const pagination = getServicePagination(featureService)
+  if (!_.has(convertedQuery, '$limit')) convertedQuery.$limit = pagination.limit
+  if (!_.has(convertedQuery, '$skip')) convertedQuery.$skip = pagination.offset
+  debug(`Requesting feature collection on path ${servicePath}`, convertedQuery)
+  const featureCollection = await featureService.find({ query: convertedQuery })
+  convertFeatureCollection(featureCollection)
+  Object.assign(featureCollection, { links: generateFeatureCollectionLinks(baseUrl, serviceName, originalQuery, pagination, featureCollection) })
+  return featureCollection
 }
 
 export function generateFeatureLinks (baseUrl, name, query, feature) {

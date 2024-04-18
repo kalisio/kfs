@@ -12,7 +12,6 @@ import moment from 'moment'
 import distribution, { finalize } from '@kalisio/feathers-distributed'
 import { kdk } from '@kalisio/kdk/core.api.js'
 import { createFeaturesService, createCatalogService } from '@kalisio/kdk/map.api.js'
-import { getDefaults } from '../src/defaults.js'
 import createServer from '../src/main.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -28,7 +27,7 @@ function runTests (options = {
   let app, server, baseUrl,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
     nbStations, nbObservations, feature
-  const nbPerPage = getDefaults().limit
+  const nbPerPage = 200
 
   it('initialize the remote app', async () => {
     kapp = kdk()
@@ -383,13 +382,35 @@ function runTests (options = {
     .timeout(5000)
 
   it('get paginated items', async () => {
-    const response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
-      .query({ limit: 10 })
-    expect(response.body.features).toExist()
-    expect(response.body.numberMatched).toExist()
-    expect(response.body.numberReturned).toExist()
-    expect(response.body.numberMatched).to.equal(nbStations)
-    expect(response.body.numberReturned).to.equal(10)
+    const nbPages = Math.ceil(nbStations / nbPerPage)
+    const hasUnfilledPage = ((nbStations / nbPerPage) % 1 !== 0)
+    let href = `${baseUrl}/collections/hubeau-stations/items?limit=${nbPerPage}`
+    // According to max limit allowed by service go through pages
+    for (let i = 0; i < nbPages; i++) {
+      const isLastPage = (i === (nbPages - 1))
+      const response = await request.get(href)
+      expect(response.body.features).toExist()
+      expect(response.body.numberMatched).toExist()
+      expect(response.body.numberReturned).toExist()
+      expect(response.body.numberMatched).to.equal(nbStations)
+      expect(response.body.numberReturned).to.equal(isLastPage && hasUnfilledPage ? nbStations - i*nbPerPage : nbPerPage)
+      expect(response.body.links).toExist()
+      expect(response.body.links.length).to.equal(isLastPage ? 1 : 2)
+      const currentPage = response.body.links[0]
+      expect(currentPage.href).toExist()
+      expect(currentPage.href.includes(`offset=${i*nbPerPage}`)).beTrue()
+      expect(currentPage.href.includes(`limit=${nbPerPage}`)).beTrue()
+      expect(currentPage.rel).toExist()
+      if (!isLastPage) {
+        const nextPage = response.body.links[1]
+        expect(nextPage.href).toExist()
+        expect(nextPage.href.includes(`offset=${(i+1)*nbPerPage}`)).beTrue()
+        expect(nextPage.href.includes(`limit=${nbPerPage}`)).beTrue()
+        expect(nextPage.rel).toExist()
+        // Get next page url
+        href = nextPage.href
+      }
+    }
   })
   // Let enough time to process
     .timeout(5000)
