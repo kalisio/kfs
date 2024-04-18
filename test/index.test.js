@@ -8,6 +8,7 @@ import config from 'config'
 import fs from 'fs-extra'
 import request from 'superagent'
 import { fileURLToPath } from 'url'
+import moment from 'moment'
 import distribution, { finalize } from '@kalisio/feathers-distributed'
 import { kdk } from '@kalisio/kdk/core.api.js'
 import { createFeaturesService, createCatalogService } from '@kalisio/kdk/map.api.js'
@@ -123,6 +124,8 @@ function runTests (options = {
     // First one with H = 0.63, second to last four ones with H = 0.43, last four ones with H = 0.53
     const observations = fs.readJsonSync(path.join(__dirname, 'data/hubeau.observations.json'))
     nbObservations = observations.length
+    // Take care that in this case no hook will convert time correctly
+    if (!options.features) observations.forEach(observation => observation.time = new Date(observation.time))
     await hubeauObsService.create(observations)
   })
   // Let enough time to process
@@ -201,6 +204,8 @@ function runTests (options = {
       expect(response.body.extent.temporal.interval[0][0]).not.to.equal(null)
       expect(response.body.extent.temporal.interval[0][1]).not.to.equal(null)
       expect(response.body.extent.temporal.trs).toExist()
+      expect(response.body.defaultSortOrder).toExist()
+      expect(response.body.defaultSortOrder).to.deep.equal(['-time'])
     }
     expect(response.body.crs).toExist()
     expect(response.body.links).toExist()
@@ -238,6 +243,38 @@ function runTests (options = {
       expect(link.href.includes('offset')).beTrue()
       expect(link.href.includes('limit')).beTrue()
       expect(link.rel).toExist()
+    })
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get sorted items', async () => {
+    // Use a string property that actually contains a number so that comparisons are made easy
+    let response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ sortby: '+CdCommune' })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStations)
+    expect(response.body.numberReturned).to.equal(nbStations < nbPerPage ? nbStations : nbPerPage)
+    let CdCommune, previousCdCommune
+    response.body.features.forEach(feature => {
+      CdCommune = Number(_.get(feature, 'properties.CdCommune'))
+      if (previousCdCommune) expect(previousCdCommune <= CdCommune).beTrue()
+      previousCdCommune = CdCommune
+    })
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ sortby: '-CdCommune' })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStations)
+    expect(response.body.numberReturned).to.equal(nbStations < nbPerPage ? nbStations : nbPerPage)
+    previousCdCommune = undefined
+    response.body.features.forEach(feature => {
+      CdCommune = Number(_.get(feature, 'properties.CdCommune'))
+      if (previousCdCommune) expect(previousCdCommune >= CdCommune).beTrue()
+      previousCdCommune = CdCommune
     })
   })
   // Let enough time to process
@@ -440,6 +477,54 @@ function runTests (options = {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbObservations)
     expect(response.body.numberReturned).to.equal(nbObservations < nbPerPage ? nbObservations : nbPerPage)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('get items by sorted times', async () => {
+    let time, previousTime, minTime, maxTime
+    // Data starts at 2018-10-22T22:00:00.000Z every hour
+    let response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
+      .query({ datetime: '../2018-10-23T08:00:00.000Z' })
+    let features = response.body.features
+    expect(features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberMatched > 0).beTrue()
+    // Default sort order should be descending time (only for features services)
+    if (options.features) {
+      minTime = moment.utc(features[features.length-1].time)
+      maxTime = moment.utc(features[0].time)
+      expect(maxTime.isAfter(minTime)).beTrue()
+      features.forEach(feature => {
+        time = moment.utc(feature.time)
+        expect(time.isSameOrAfter(minTime)).beTrue()
+        expect(time.isSameOrBefore(maxTime)).beTrue()
+        if (previousTime) expect(time.isBefore(previousTime)).beTrue()
+        previousTime = time
+      })
+    }
+    response = await request.get(`${baseUrl}/collections/hubeau-observations/items`)
+      .query({ datetime: '../2018-10-23T08:00:00.000Z', sortby: '+time' })
+    features = response.body.features
+    expect(features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberMatched > 0).beTrue()
+    // Sort order should now be ascending time
+    if (options.features) {
+      expect(moment.utc(features[0].time).isSame(minTime)).beTrue()
+      expect(moment.utc(features[features.length-1].time).isSame(maxTime)).beTrue()
+    } else {
+      minTime = moment.utc(features[0].time)
+      maxTime = moment.utc(features[features.length-1].time)
+    }
+    previousTime = undefined
+    features.forEach(feature => {
+      time = moment.utc(feature.time)
+      expect(time.isSameOrAfter(minTime)).beTrue()
+      expect(time.isSameOrBefore(maxTime)).beTrue()
+      if (previousTime) expect(time.isAfter(previousTime)).beTrue()
+      previousTime = time
+    })
   })
   // Let enough time to process
     .timeout(5000)

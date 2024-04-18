@@ -150,6 +150,15 @@ export function generateFeatureCollectionLinks (baseUrl, name, query, features) 
   return links
 }
 
+export function generateCollectionSortOrder (layer) {
+  const sortOrder = {}
+  // For layer with temporal dimension we sort by descending time by default
+  if (layer.fromm || layer.to || layer.every) {
+    sortOrder.defaultSortOrder = ['-time']
+  }
+  return sortOrder
+}
+
 export function generateCollection (baseUrl, name, title, description, query) {
   const links = generateCollectionLinks(baseUrl, name, query)
   return {
@@ -172,12 +181,16 @@ export function generateCollections (baseUrl, layer, query) {
   const title = _.get(layer, `i18n.en.${layer.name}`, layer.name)
   const description = _.get(layer, `i18n.en.${layer.description}`, layer.description)
   const extent = generateCollectionExtent(layer)
+  const sortOrder = generateCollectionSortOrder(layer)
   // Probe service as well ?
   if (layer.probeService) {
-    collections.push(Object.assign(generateCollection(baseUrl, layer.service, title + ' (measures)', description, query), extent))
-    collections.push(Object.assign(generateCollection(baseUrl, layer.probeService, title + ' (stations)', description, query), extent))
+    const measuresCollection = Object.assign(generateCollection(baseUrl, layer.service, title + ' (measures)', description, query), extent, sortOrder)
+    collections.push(measuresCollection)
+    const stationsCollection = Object.assign(generateCollection(baseUrl, layer.probeService, title + ' (stations)', description, query), extent, sortOrder)
+    collections.push(stationsCollection)
   } else {
-    collections.push(Object.assign(generateCollection(baseUrl, layer.service, title, description, query), extent))
+    const collection = Object.assign(generateCollection(baseUrl, layer.service, title, description, query), extent, sortOrder)
+    collections.push(collection)
   }
   return collections
 }
@@ -195,7 +208,7 @@ export function convertValue (value) {
   else if (boolean) return lowerCaseValue === 'true'
   else if (nullable) return null
   // Enclosing quotes to avoid automated conversion to number eg '1000'
-  else if (value.startsWith('\'') && value.endsWith('\'')) return value.substring(1, value.length-1)
+  else if (value.startsWith('\'') && value.endsWith('\'')) return value.substring(1, value.length - 1)
   else return value
 }
 
@@ -251,9 +264,7 @@ export function convertQuery (query, options = { properties: true }) {
     delete query.bbox
   }
   if (query.datetime) {
-    const timeQuery = {
-      $sort: { time: -1 }
-    }
+    const timeQuery = {}
     const interval = convertDateTime(query.datetime)
     // Datetime or interval ?
     if (!Array.isArray(interval)) {
@@ -265,6 +276,21 @@ export function convertQuery (query, options = { properties: true }) {
     }
     Object.assign(convertedQuery, timeQuery)
     delete query.datetime
+  }
+  if (query.sortby) {
+    const sortQuery = {}
+    const sortOrders = query.sortby.split(',')
+    sortOrders.forEach(sortOrder => {
+      // Default is ascending if no specifier
+      const descending = sortOrder.startsWith('-')
+      if (sortOrder.startsWith('-') || sortOrder.startsWith('+')) sortOrder = sortOrder.substring(1)
+      // Specific case of internal time property always located at feature root object so that we force it
+      if (sortOrder === 'time') sortQuery.time = (descending ? -1 : 1)
+      // Sorting usually refers to feature properties, which also for a possible user-defined time different from our internal time
+      sortQuery[options.properties ? `properties.${sortOrder}` : sortOrder] = (descending ? -1 : 1)
+    })
+    Object.assign(convertedQuery, { $sort: sortQuery })
+    delete query.sortby
   }
   if (query.filter) {
     const cqlQuery = convertCqlQuery(query)
@@ -315,6 +341,9 @@ export async function getFeaturesFromService (app, servicePath, query) {
   if (!isFeaturesService(featureService)) {
     // Specific query parameters to make service compliant with features service interfaces ?
     if (options.query) Object.assign(query, options.query)
+  } else {
+    // Default sort order is descending time if not provided
+    if (!_.has(query, '$sort.time')) _.set(query, '$sort.time', -1)
   }
   debug(`Requesting feature collection on path ${servicePath}`, query)
   const featureCollection = await featureService.find({ query })
