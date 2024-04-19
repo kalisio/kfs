@@ -68,7 +68,7 @@
   },
   "devDependencies": {
     "@feathersjs/memory": "^5.0.8",
-    "@kalisio/kdk": "^2.1.2",
+    "@kalisio/kdk": "^2.2.1",
     "c8": "^7.11.0",
     "chai": "^4.3.6",
     "chai-lint": "^0.1.1",
