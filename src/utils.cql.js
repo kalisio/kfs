@@ -29,10 +29,9 @@ export function convertIsNullTextCqlExpression (expression, operator) {
   let cqlJson = {}
   if (expression.endsWith(operator)) {
     // Omit operator to manage operand
-    let property = expression.replace(operator, '').trim()
-    if (!ReservedProperties.includes(property)) property = `properties.${property}`
+    const property = expression.replace(operator, '').trim()
     cqlJson = { isNull: { property } }
-    if (operator.startsWith('NOT')) cqlJson = { not: cqlJson }
+    if (operator.includes('NOT')) cqlJson = { not: cqlJson }
   }
   return cqlJson
 }
@@ -173,12 +172,12 @@ export function convertIsNullCqlExpression (expression) {
   let property = _.get(expression, 'isNull.property')
   if (property) {
     if (!ReservedProperties.includes(property)) property = `properties.${property}`
-    query[property] = { $exists: false }
+    query[property] = { $eq: null }
   }
   property = _.get(expression, 'not.isNull.property')
   if (property) {
     if (!ReservedProperties.includes(property)) property = `properties.${property}`
-    query[property] = { $exists: true }
+    query[property] = { $ne: null }
   }
   return query
 }

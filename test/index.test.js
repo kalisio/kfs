@@ -26,7 +26,7 @@ function runTests (options = {
 }) {
   let app, server, baseUrl,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
-    nbStations, nbObservations, feature
+    nbStations, nbStationsWithNullInfluLocal, nbObservations, feature
   const nbPerPage = 200
 
   it('initialize the remote app', async () => {
@@ -93,6 +93,7 @@ function runTests (options = {
     // Feed the collection
     let stations = fs.readJsonSync(path.join(__dirname, 'data/hubeau.stations.json')).features
     nbStations = stations.length
+    nbStationsWithNullInfluLocal = stations.filter(station => !station.properties.InfluLocal).length
     stations = await hubeauStationsService.create(stations)
     feature = stations[Math.floor(Math.random() * nbStations)]
   })
@@ -663,6 +664,24 @@ function runTests (options = {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(1)
     expect(response.body.numberReturned).to.equal(1)
+
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `InfluLocal IS NULL`, limit: 1 })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStationsWithNullInfluLocal)
+    expect(response.body.numberReturned).to.equal(1)
+    expect(response.body.features[0].properties.InfluLocal).beNull()
+
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `InfluLocal IS NOT NULL`, limit: 1 })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStations - nbStationsWithNullInfluLocal)
+    expect(response.body.numberReturned).to.equal(1)
+    expect(response.body.features[0].properties.InfluLocal).toExist()
   })
   // Let enough time to process
     .timeout(5000)
