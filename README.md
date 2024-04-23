@@ -1,7 +1,7 @@
 # kfs
 
 [![Latest Release](https://img.shields.io/github/v/tag/kalisio/kfs?sort=semver&label=latest)](https://github.com/kalisio/kfs/releases)
-[![Build Status](https://app.travis-ci.com/kalisio/kfs.svg?branch=master)](https://app.travis-ci.com/kalisio/kfs)
+[![CI](https://github.com/kalisio/kfs/actions/workflows/main.yaml/badge.svg)](https://github.com/kalisio/kfs/actions/workflows/main.yaml)
 [![Code Climate](https://codeclimate.com/github/kalisio/kfs/badges/gpa.svg)](https://codeclimate.com/github/kalisio/kfs)
 [![Test Coverage](https://codeclimate.com/github/kalisio/kfs/badges/coverage.svg)](https://codeclimate.com/github/kalisio/kfs/coverage)
 [![Dependency Status](https://img.shields.io/david/kalisio/kfs.svg?style=flat-square)](https://david-dm.org/kalisio/kfs)
