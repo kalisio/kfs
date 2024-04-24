@@ -45,7 +45,7 @@ load_value_files "$WORKSPACE_DIR/development/common/KALISIO_DOCKERHUB_PASSWORD.e
 ## Build container
 ##
 
-IMAGE_NAME="kalisio/geokoder"
+IMAGE_NAME="kalisio/kfs"
 if [[ -z "$GIT_TAG" ]]; then
     IMAGE_TAG=latest
 else
