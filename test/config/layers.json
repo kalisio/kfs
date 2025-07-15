@@ -23,6 +23,29 @@
     "from": "P-7D",
     "to": "PT-10M",
     "bbox": [2.05338918702, -54.5247541978, 9.56001631027, 51.1485061713]
+  }, {
+    "name": "Layers.FILTERED_SERVICE",
+    "description": "Layers.FILTERED_SERVICE_DESCRIPTION",
+    "i18n": {
+      "fr": {
+        "Layers": {
+          "FILTERED_SERVICE": "Service filtré",
+          "FILTERED_SERVICE_DESCRIPTION": "Données filtrées"
+        }
+      },
+      "en": {
+        "Layers": {
+          "FILTERED_SERVICE": "Filtered service",
+          "FILTERED_SERVICE_DESCRIPTION": "Filtered data"
+        }
+      }
+    },
+    "type" : "OverlayLayer",
+    "service": "hubeau-filtered",
+    "featureId": "id",
+    "from": "P-7D",
+    "to": "PT-10M",
+    "bbox": [2.05338918702, -54.5247541978, 9.56001631027, 51.1485061713]
   }
 ]
 

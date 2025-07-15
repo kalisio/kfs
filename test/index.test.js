@@ -25,7 +25,7 @@ function runTests (options = {
   features: true
 }) {
   let app, server, baseUrl,
-    kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService,
+    kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService, hubeauFilteredService,
     nbStations, nbStationsWithNullInfluLocal, nbObservations, feature
   const nbPerPage = 200
 
@@ -43,7 +43,7 @@ function runTests (options = {
       publicationDelay: 3000,
       key: 'kfs-test',
       // Distribute only the test services
-      services: (service) => service.path.includes('hubeau') ||
+      services: (service) => (service.path.includes('hubeau') && !service.path.includes('filtered')) ||
                 (options.catalog && service.path.includes('catalog')),
       // Distribute at least modelName and pagination for KFS to know about features services
       remoteServiceOptions: () => ['modelName', 'paginate']
@@ -127,6 +127,30 @@ function runTests (options = {
     // Take care that in this case no hook will convert time correctly
     if (!options.features) observations.forEach(observation => observation.time = new Date(observation.time))
     await hubeauObsService.create(observations)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
+  it('create and feed the hubeau filtered service', async () => {
+    // Create the service
+    const hubeauLayer = _.find(defaultLayers, { name: 'Layers.FILTERED_SERVICE' })
+    expect(hubeauLayer).toExist()
+    expect(hubeauLayer.service === 'hubeau-filtered').beTrue()
+    if (options.features) {
+      await createFeaturesService.call(kapp, {
+        collection: hubeauLayer.service,
+        featureId: hubeauLayer.featureId,
+        paginate: { default: nbPerPage }
+      })
+    } else {
+      await kapp.createService('hubeau-filtered', {
+        modelsPath,
+        servicesPath,
+        paginate: { default: nbPerPage }
+      })
+    }
+    hubeauFilteredService = kapp.getService(hubeauLayer.service)
+    expect(hubeauFilteredService).toExist()
   })
   // Let enough time to process
     .timeout(5000)

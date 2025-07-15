@@ -97,7 +97,9 @@ export default async function (app) {
       // Retrieve service-based layers
       const layers = await catalogService.find({ query: { service: { $exists: true } }, paginate: false })
       layers.forEach(layer => {
-        // Create a collection for feature service(s)
+        // Create a collection for feature service(s) except if service is filtered (ie not available)
+        console.log(layer.service, app.services[stripSlashes(`${apiPath}/${layer.service}`)])
+        if (!app.services[stripSlashes(`${apiPath}/${layer.service}`)]) return
         collections = collections.concat(utils.generateCollections(baseUrl, layer))
       })
     }
