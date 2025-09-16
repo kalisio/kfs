@@ -410,11 +410,22 @@ function runTests (options = {
     const nbPages = Math.ceil(nbStations / nbPerPage)
     const hasUnfilledPage = ((nbStations / nbPerPage) % 1 !== 0)
     let href = `${baseUrl}/collections/hubeau-stations/items?limit=${nbPerPage}`
+    let previousFeatures
     // According to max limit allowed by service go through pages
     for (let i = 0; i < nbPages; i++) {
       const isLastPage = (i === (nbPages - 1))
       const response = await request.get(href)
       expect(response.body.features).toExist()
+      let currentFeatures = response.body.features
+      if (i > 0) {
+        // Check there is no doublon in pages
+        previousFeatures.forEach(previousFeature => {
+          expect(!currentFeatures.find(currentFeature => {
+            return previousFeature.properties.CdStationH === currentFeature.properties.CdStationH
+          }))
+        })
+      }
+      previousFeatures = currentFeatures
       expect(response.body.numberMatched).toExist()
       expect(response.body.numberReturned).toExist()
       expect(response.body.numberMatched).to.equal(nbStations)
