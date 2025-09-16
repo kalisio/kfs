@@ -168,7 +168,7 @@ export function generateFeatureCollectionLinks (baseUrl, name, query, pagination
 export function generateCollectionSortOrder (layer) {
   const sortOrder = {}
   // For layer with temporal dimension we sort by descending time by default
-  if (layer.fromm || layer.to || layer.every) {
+  if (layer.from || layer.to || layer.every) {
     sortOrder.defaultSortOrder = ['-time']
   }
   return sortOrder
