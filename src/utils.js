@@ -274,6 +274,21 @@ export function convertQuery (query, options = { properties: true }) {
     Object.assign(convertedQuery, { south: bbox[1], north: bbox[3], east: bbox[2], west: bbox[0] })
     delete query.bbox
   }
+  if (query.sortby) {
+    const sortQuery = {}
+    const sortOrders = query.sortby.split(',')
+    sortOrders.forEach(sortOrder => {
+      // Default is ascending if no specifier
+      const descending = sortOrder.startsWith('-')
+      if (sortOrder.startsWith('-') || sortOrder.startsWith('+')) sortOrder = sortOrder.substring(1)
+      // Specific case of internal time property always located at feature root object so that we force it
+      if (sortOrder === 'time') sortQuery.time = (descending ? -1 : 1)
+      // Sorting usually refers to feature properties, also for a possible user-defined time different from our internal time
+      else sortQuery[options.properties ? `properties.${sortOrder}` : sortOrder] = (descending ? -1 : 1)
+    })
+    Object.assign(convertedQuery, { $sort: sortQuery })
+    delete query.sortby
+  }
   if (query.datetime) {
     const timeQuery = {}
     const interval = convertDateTime(query.datetime)
@@ -285,23 +300,10 @@ export function convertQuery (query, options = { properties: true }) {
       if (start) _.set(timeQuery, 'time.$gte', start.toISOString())
       if (end) _.set(timeQuery, 'time.$lte', end.toISOString())
     }
+    // Default sort order is descending time if not provided
+    if (!_.has(convertedQuery, '$sort.time')) _.set(convertedQuery, '$sort.time', -1)
     Object.assign(convertedQuery, timeQuery)
     delete query.datetime
-  }
-  if (query.sortby) {
-    const sortQuery = {}
-    const sortOrders = query.sortby.split(',')
-    sortOrders.forEach(sortOrder => {
-      // Default is ascending if no specifier
-      const descending = sortOrder.startsWith('-')
-      if (sortOrder.startsWith('-') || sortOrder.startsWith('+')) sortOrder = sortOrder.substring(1)
-      // Specific case of internal time property always located at feature root object so that we force it
-      if (sortOrder === 'time') sortQuery.time = (descending ? -1 : 1)
-      // Sorting usually refers to feature properties, which also for a possible user-defined time different from our internal time
-      sortQuery[options.properties ? `properties.${sortOrder}` : sortOrder] = (descending ? -1 : 1)
-    })
-    Object.assign(convertedQuery, { $sort: sortQuery })
-    delete query.sortby
   }
   if (query.filter) {
     const cqlQuery = convertCqlQuery(query)
@@ -355,9 +357,6 @@ export async function getFeaturesFromService (app, servicePath, query) {
   if (!isFeaturesService(featureService)) {
     // Specific query parameters to make service compliant with features service interfaces ?
     if (options.query) Object.assign(convertedQuery, options.query)
-  } else {
-    // Default sort order is descending time if not provided
-    if (!_.has(convertedQuery, '$sort.time')) _.set(convertedQuery, '$sort.time', -1)
   }
   // Default pagination
   const pagination = getServicePagination(featureService)
