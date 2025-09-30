@@ -218,12 +218,12 @@ export function convertValue (value) {
   const number = _.toNumber(value)
   const boolean = (lowerCaseValue === 'true') || (lowerCaseValue === 'false')
   const nullable = (lowerCaseValue === 'null')
-  if (date.isValid()) return date.toISOString()
-  else if (!Number.isNaN(number)) return number
+  if (!Number.isNaN(number)) return number
   else if (boolean) return lowerCaseValue === 'true'
   else if (nullable) return null
   // Enclosing quotes to avoid automated conversion to number eg '1000'
   else if (value.startsWith('\'') && value.endsWith('\'')) return value.substring(1, value.length - 1)
+  else if (date.isValid()) return date.toISOString()
   else return value
 }
 
