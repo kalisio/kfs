@@ -48,6 +48,7 @@ Here are the environment variables you can use to customize the service:
 | `API_PREFIX` | Prefix used on API routes | `/api`  |
 | `LIMIT` | Default pagination limit | `500`  |
 | `OFFSET` | Default pagination offset | `0`  |
+| `MAX` | Maximum pagination limit. If this value is set, it overrides the `paginate.max` value for all services. | `null`  |
 | `DEBUG` | The namespaces to enable debug output. Set it to `kfs:*` to enable full debug output. |  - |
 
 > Note:
