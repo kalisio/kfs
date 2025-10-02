@@ -47,14 +47,31 @@ export function isFeaturesService (service) {
   return (_.get(service, 'remoteOptions.modelName') === 'features')
 }
 
-export function getServicePagination (service) {
-  let { limit, offset } = getDefaults()
-  // If a default is defined on service use it
-  const defaultLimit = _.get(service, 'remoteOptions.paginate.default')
-  if (defaultLimit && (defaultLimit < limit)) limit = defaultLimit
-  const max = _.get(service, 'remoteOptions.paginate.max')
-  // If a max is defined on service check it
-  if (max && (limit > max)) limit = max
+export function getPagination (service, query = {}) {
+  let { limit: defaultLimit, offset: defaultOffset, max: globalMax } = getDefaults()
+
+  // Default service limit
+  const serviceDefault = _.get(service, 'remoteOptions.paginate.default')
+  if (serviceDefault && serviceDefault < defaultLimit) defaultLimit = serviceDefault
+
+  // Max service
+  const serviceMax = _.get(service, 'remoteOptions.paginate.max')
+
+  // Max effective = most restrictive
+  let effectiveMax = serviceMax
+  if (globalMax && (!serviceMax || globalMax < serviceMax)) effectiveMax = globalMax
+
+  // $limit management
+  let limit = _.get(query, '$limit', null)
+  // Not defined in the query → set the default
+  if (limit === null) limit = defaultLimit
+  // If defined → limit it
+  if (effectiveMax && limit > effectiveMax) limit = effectiveMax
+
+  // $skip management
+  let offset = _.get(query, '$skip', null)
+  if (offset === null) offset = defaultOffset
+
   return { limit, offset }
 }
 
@@ -359,9 +376,9 @@ export async function getFeaturesFromService (app, servicePath, query) {
     if (options.query) Object.assign(convertedQuery, options.query)
   }
   // Default pagination
-  const pagination = getServicePagination(featureService)
-  if (!_.has(convertedQuery, '$limit')) convertedQuery.$limit = pagination.limit
-  if (!_.has(convertedQuery, '$skip')) convertedQuery.$skip = pagination.offset
+  const pagination = getPagination(featureService, convertedQuery)
+  convertedQuery.$limit = pagination.limit
+  convertedQuery.$skip = pagination.offset
   debug(`Requesting feature collection on path ${servicePath}`, convertedQuery)
   const featureCollection = await featureService.find({ query: convertedQuery })
   convertFeatureCollection(featureCollection)
