@@ -9,11 +9,15 @@ import makeDebug from 'debug'
 import { stripSlashes } from '@feathersjs/commons'
 import errors from '@feathersjs/errors'
 import { getDefaults } from './defaults.js'
-import { convertCqlQuery } from './utils.cql.js'
+import { convertQuery, convertFeatureCollection, convertFeature } from './utils.convert.js'
 
+// Special caracter used to separate service from filter name in collection name for layers providing filters.
+// Indeed, we build collections based on available filters, e.g.
+// a layer named 'admin-express' with filter like { {label|name}: 'region', ... } will result in a collection named admin-express~region
+export const FilterCharacter = '~'
 const debug = makeDebug('kfs:utils')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const { BadRequest } = errors
+const { NotFound } = errors
 
 const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
 
@@ -206,7 +210,11 @@ export function generateCollection (baseUrl, name, title, description, query) {
   }
 }
 
-export function generateCollections (baseUrl, layer, query) {
+export function getCollectionName (serviceName, filterName) {
+  return (filterName ? serviceName + FilterCharacter + _.kebabCase(filterName) : serviceName)
+}
+
+export function generateCollections (baseUrl, layer) {
   debug(`Generating collections for layer ${layer.name}`)
   const collections = []
   // Take i18n into account if any
@@ -216,153 +224,117 @@ export function generateCollections (baseUrl, layer, query) {
   const sortOrder = generateCollectionSortOrder(layer)
   // Probe service as well ?
   if (layer.probeService) {
-    const measuresCollection = Object.assign(generateCollection(baseUrl, layer.service, title + ' (measures)', description, query), extent, sortOrder)
+    const measuresCollection = Object.assign(generateCollection(baseUrl, getCollectionName(layer.service), title + ' (measures)', description), extent, sortOrder)
     collections.push(measuresCollection)
-    const stationsCollection = Object.assign(generateCollection(baseUrl, layer.probeService, title + ' (stations)', description, query), extent, sortOrder)
+    const stationsCollection = Object.assign(generateCollection(baseUrl, getCollectionName(layer.probeService), title + ' (stations)', description), extent, sortOrder)
     collections.push(stationsCollection)
   } else {
-    const collection = Object.assign(generateCollection(baseUrl, layer.service, title, description, query), extent, sortOrder)
+    const collection = Object.assign(generateCollection(baseUrl, getCollectionName(layer.service), title, description), extent, sortOrder)
     collections.push(collection)
+  }
+  // In case of a filtered layer we provide one collection per filter as well
+  if (layer.filters) {
+    layer.filters.forEach(filter => {
+      // Take i18n into account if any
+      const filterTitle = _.get(layer, `i18n.en.${filter.label}`, filter.label)
+      const filterName = filter.name || filterTitle
+      if (layer.probeService) {
+        const measuresCollection = Object.assign(generateCollection(baseUrl, getCollectionName(layer.service, filterName), title + ` (measures) - ${filterTitle}`, description), extent, sortOrder)
+        collections.push(measuresCollection)
+        const stationsCollection = Object.assign(generateCollection(baseUrl, getCollectionName(layer.probeService, filterName), title + ` (stations) - ${filterTitle}`, description), extent, sortOrder)
+        collections.push(stationsCollection)
+      } else {
+        const collection = Object.assign(generateCollection(baseUrl, getCollectionName(layer.service, filterName), title + ` - ${filterTitle}`, description), extent, sortOrder)
+        collections.push(collection)
+      }
+    })
   }
   return collections
 }
 
-export function convertValue (value) {
-  if (Array.isArray(value)) return value.map(item => convertValue(item))
-  // Try to automatically convert to target types
-  const lowerCaseValue = _.lowerCase(value)
-  const date = moment(value, moment.ISO_8601)
-  const number = _.toNumber(value)
-  const boolean = (lowerCaseValue === 'true') || (lowerCaseValue === 'false')
-  const nullable = (lowerCaseValue === 'null')
-  if (!Number.isNaN(number)) return number
-  else if (boolean) return lowerCaseValue === 'true'
-  else if (nullable) return null
-  // Enclosing quotes to avoid automated conversion to number eg '1000'
-  else if (value.startsWith('\'') && value.endsWith('\'')) return value.substring(1, value.length - 1)
-  else if (date.isValid()) return date.toISOString()
-  else return value
-}
-
-export function convertDateTime (value) {
-  // We need to support different formats according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_datetime:
-  // <datetime>, <start>/<end>, <start>/.., ../<end>
-  // We additionnaly support <start>/<duration>, <duration>/<end>
-  // Datetime or interval ?
-  if (value.indexOf('/') === -1) {
-    // Half bounded interval
-    if ((value === '..') || (value === '')) return null
-    const datetime = moment.utc(value)
-    if (datetime.isValid()) return datetime
-    const duration = moment.duration(value)
-    // It seems invalid duration can be created so we check for something > 0
-    if (duration.isValid() && (duration.milliseconds() > 0)) return duration
-    else throw new BadRequest('Invalid datetime format')
-  } else {
-    const interval = value.split('/')
-    if (interval.length !== 2) throw new BadRequest('The datetime parameter shall have one of the following syntaxes: <datetime>, <start>/<end>, <start>/.., ../<end>')
-    return interval.map(value => convertDateTime(value))
-  }
-}
-
-export function convertQuery (query, options = { properties: true }) {
-  // FIXME: hack to make OGC conformance tests pass
-  // Indeed we don't know the schema of our features collections so that we cannot
-  // detect if a given query parameter does not correspond to any property in features
-  _.forOwn(query, (value, key) => {
-    if (key.includes('unknownQueryParameter')) throw new BadRequest('Invalid query parameter')
-  })
-
-  const convertedQuery = {}
-  if (query.limit) {
-    convertedQuery.$limit = _.toNumber(query.limit)
-    if (!_.isFinite(convertedQuery.$limit)) throw new BadRequest('Invalid limit parameter')
-    delete query.limit
-  }
-  if (query.offset) {
-    convertedQuery.$skip = _.toNumber(query.offset)
-    if (!_.isFinite(convertedQuery.$skip)) throw new BadRequest('Invalid offset parameter')
-    delete query.offset
-  }
-  if (query.bbox) {
-    // TODO: we should support additionnal CRS according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_bbox
-    const bbox = query.bbox.split(',').map(value => _.toNumber(value))
-    if (bbox.length < 4) throw new BadRequest('The bounding box parameter shall have at least four numbers')
-    Object.assign(convertedQuery, { south: bbox[1], north: bbox[3], east: bbox[2], west: bbox[0] })
-    delete query.bbox
-  }
-  if (query.sortby) {
-    const sortQuery = {}
-    const sortOrders = query.sortby.split(',')
-    sortOrders.forEach(sortOrder => {
-      // Default is ascending if no specifier
-      const descending = sortOrder.startsWith('-')
-      if (sortOrder.startsWith('-') || sortOrder.startsWith('+')) sortOrder = sortOrder.substring(1)
-      // Specific case of internal time property always located at feature root object so that we force it
-      if (sortOrder === 'time') sortQuery.time = (descending ? -1 : 1)
-      // Sorting usually refers to feature properties, also for a possible user-defined time different from our internal time
-      else sortQuery[options.properties ? `properties.${sortOrder}` : sortOrder] = (descending ? -1 : 1)
-    })
-    Object.assign(convertedQuery, { $sort: sortQuery })
-    delete query.sortby
-  }
-  if (query.datetime) {
-    const timeQuery = {}
-    const interval = convertDateTime(query.datetime)
-    // Datetime or interval ?
-    if (!Array.isArray(interval)) {
-      _.set(timeQuery, 'time', interval.toISOString())
-    } else {
-      const [start, end] = interval
-      if (start) _.set(timeQuery, 'time.$gte', start.toISOString())
-      if (end) _.set(timeQuery, 'time.$lte', end.toISOString())
-    }
-    // Default sort order is descending time if not provided
-    if (!_.has(convertedQuery, '$sort.time')) _.set(convertedQuery, '$sort.time', -1)
-    Object.assign(convertedQuery, timeQuery)
-    delete query.datetime
-  }
-  if (query.filter) {
-    const cqlQuery = convertCqlQuery(query)
-    debug('Processed CQL query:', cqlQuery)
-    Object.assign(convertedQuery, cqlQuery)
-    delete query.filter
-    delete query['filter-lang']
-  }
-  // Any other query parameter is assumed to be a filter on feature properties
-  _.forOwn(query, (value, key) => {
-    // Add implicit properties object
-    if (options.properties) key = `properties.${key}`
-    convertedQuery[key] = convertValue(value)
-  })
-  return convertedQuery
-}
-
-export function convertFeature (feature) {
-  // Convert internal ID to OGC ID
-  _.set(feature, 'id', _.get(feature, '_id'))
-  _.unset(feature, '_id')
-  return feature
-}
-
-export function convertFeatureCollection (featureCollection) {
-  const features = _.get(featureCollection, 'features', [])
-  features.forEach(convertFeature)
-  featureCollection.numberMatched = featureCollection.total
-  featureCollection.numberReturned = features.length
-  featureCollection.timeStamp = moment().utc().toISOString()
-  debug(`Retrieved ${featureCollection.numberReturned} over ${featureCollection.total} features`)
-  delete featureCollection.total
-  delete featureCollection.skip
-  delete featureCollection.limit
-  return featureCollection
-}
-
-export async function getFeaturesFromService (app, servicePath, query) {
-  const featureService = app.service(servicePath)
+export async function getLayerForService (app, name, context) {
   const apiPath = app.get('apiPath')
+  // Try to use any catalog service available
+  const catalogPath = stripSlashes(context ? `${apiPath}/${context}/catalog` : `${apiPath}/catalog`)
+  const servicePath = stripSlashes(context ? `${apiPath}/${context}/${name}` : `${apiPath}/${name}`)
+  if (app.services[catalogPath]) {
+    debug(`Seeking for layer ${name} in catalog`)
+    const catalogService = app.service(catalogPath)
+    const layers = await catalogService.find({ query: { $or: [{ service: name }, { probeService: name }] }, paginate: false })
+    if (layers.length > 0) return layers[0]
+  } else {
+    // Otherwise try to retrieve it from available services as if they are
+    // authorised in the distribution config it should be exposed
+    debug(`Seeking for service ${name} in app`)
+    const servicePaths = Object.keys(app.services)
+    for (let i = 0; i < servicePaths.length; i++) {
+      const path = servicePaths[i]
+      const service = app.service(path)
+      // We do not expose local internal services
+      if (!service.remote) continue
+      // Return virtual "layer" definition used to expose service
+      if (path === servicePath) {
+        return {
+          name: (context ? `${context}/${name}` : `${name}`),
+          service: (context ? `${context}/${name}` : `${name}`)
+        }
+      }
+    }
+  }
+  throw new NotFound(`Cannot find layer for collection ${name}`)
+}
+
+export async function getCollection (app, name, context) {
+  const { serviceName } = getServiceAndFilterForCollection(app, name)
+  const layer = await getLayerForService(app, serviceName, context)
   const baseUrl = app.get('baseUrl')
-  const serviceName = stripSlashes(servicePath).replace(stripSlashes(apiPath) + '/', '')
+  const collections = generateCollections(baseUrl, layer)
+  // Select the right collection
+  return _.find(collections, { id: name })
+}
+
+// Take care of possible filter used in collection name
+export function getServiceAndFilterForCollection (app, collection) {
+  let serviceName = collection
+  let filterName
+  const tokens = collection.split(FilterCharacter)
+  // First element will be service name, second element being the filter name
+  if (tokens.length > 1) {
+    serviceName = tokens.shift()
+    filterName = tokens.shift()
+  }
+  return { serviceName, filterName }
+}
+
+// Take care of possible filter used in collection name
+export async function getServiceForCollection (app, collection, context) {
+  const { serviceName, filterName } = getServiceAndFilterForCollection(app, collection)
+  const filterQuery = {}
+  if (filterName) {
+    const layer = await getLayerForService(app, serviceName, context)
+    const filter = layer.filters.find(filter => {
+      // Take i18n into account if any
+      const filterTitle = _.get(layer, `i18n.en.${filter.label}`, filter.label)
+      const layerFilterName = filter.name || filterTitle
+      return (_.kebabCase(layerFilterName) === filterName)
+    })
+    Object.assign(filterQuery, filter.active)
+  }
+  const apiPath = app.get('apiPath')
+  const servicePath = (context ? `${apiPath}/${context}/${serviceName}` : `${apiPath}/${serviceName}`)
+  debug(`Requesting service ${serviceName} on path ${servicePath} for collection ${collection}`)
+  return {
+    serviceName,
+    servicePath,
+    filterName,
+    filterQuery
+  }
+}
+
+export async function getFeaturesFromService (app, collection, query, context) {
+  const baseUrl = app.get('baseUrl')
+  const { serviceName, servicePath, filterName, filterQuery } = await getServiceForCollection(app, collection, context)
+  const featureService = app.service(servicePath)
   const options = getServiceOptions(serviceName, featureService)
   // Keep track of original query as it will be updated by conversion
   const originalQuery = _.cloneDeep(query)
@@ -371,6 +343,7 @@ export async function getFeaturesFromService (app, servicePath, query) {
   const convertedQuery = convertQuery(query, {
     properties: _.get(options, 'properties', isFeaturesService(featureService))
   })
+  Object.assign(convertedQuery, filterQuery)
   if (!isFeaturesService(featureService)) {
     // Specific query parameters to make service compliant with features service interfaces ?
     if (options.query) Object.assign(convertedQuery, options.query)
@@ -382,7 +355,7 @@ export async function getFeaturesFromService (app, servicePath, query) {
   debug(`Requesting feature collection on path ${servicePath}`, convertedQuery)
   const featureCollection = await featureService.find({ query: convertedQuery })
   convertFeatureCollection(featureCollection)
-  Object.assign(featureCollection, { links: generateFeatureCollectionLinks(baseUrl, serviceName, originalQuery, pagination, featureCollection) })
+  Object.assign(featureCollection, { links: generateFeatureCollectionLinks(baseUrl, getCollectionName(serviceName, filterName), originalQuery, pagination, featureCollection) })
   return featureCollection
 }
 
@@ -405,11 +378,10 @@ export function generateFeatureLinks (baseUrl, name, query, feature) {
   }]
 }
 
-export async function getFeatureFromService (app, servicePath, id) {
+export async function getFeatureFromService (app, collection, id, context) {
+  const { serviceName, servicePath } = await getServiceForCollection(app, collection, context)
   debug(`Requesting feature on path ${servicePath}`, id)
   const featureService = app.service(servicePath)
-  const apiPath = app.get('apiPath')
-  const serviceName = stripSlashes(servicePath).replace(stripSlashes(apiPath) + '/', '')
   const options = getServiceOptions(serviceName, featureService)
   const query = {}
   if (!isFeaturesService(featureService)) {

@@ -3,13 +3,11 @@ import path from 'path'
 import _ from 'lodash'
 import makeDebug from 'debug'
 import { stripSlashes } from '@feathersjs/commons'
-import errors from '@feathersjs/errors'
 import { fileURLToPath } from 'url'
 import * as utils from './utils.js'
 
 const debug = makeDebug('kfs:routes')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const { NotFound } = errors
 
 export default async function (app) {
   const packageInfo = fs.readJsonSync(path.join(__dirname, '..', 'package.json'))
@@ -51,43 +49,6 @@ export default async function (app) {
   })
 
   // Collections
-  async function getLayerForCollection (name, context) {
-    // Try to use any catalog service available
-    const catalogPath = stripSlashes((context ? `${apiPath}/${context}/catalog` : `${apiPath}/catalog`))
-    const servicePath = stripSlashes((context ? `${apiPath}/${context}/${name}` : `${apiPath}/${name}`))
-    if (app.services[catalogPath]) {
-      debug(`Seeking for layer ${name} in catalog`)
-      const catalogService = app.service(catalogPath)
-      const layers = await catalogService.find({ query: { $or: [{ service: name }, { probeService: name }] }, paginate: false })
-      if (layers.length > 0) return layers[0]
-    } else {
-      // Otherwise try to retrieve it from available services as if they are
-      // authorised in the distribution config it should be exposed
-      debug(`Seeking for service ${name} in app`)
-      const servicePaths = Object.keys(app.services)
-      for (let i = 0; i < servicePaths.length; i++) {
-        const path = servicePaths[i]
-        const service = app.service(path)
-        // We do not expose local internal services
-        if (!service.remote) continue
-        // Return virtual "layer" definition used to expose service
-        if (path === servicePath) {
-          return {
-            name: (context ? `${context}/${name}` : `${name}`),
-            service: (context ? `${context}/${name}` : `${name}`)
-          }
-        }
-      }
-    }
-    throw new NotFound(`Cannot find collection ${name}`)
-  }
-  async function getCollection (name, context) {
-    const layer = await getLayerForCollection(name, context)
-    const collections = utils.generateCollections(baseUrl, layer)
-    // Select the right collection
-    return _.find(collections, { id: name })
-  }
-
   app.get(`${apiPath}/collections`, async (req, res, next) => {
     let collections = []
     // Try to use any catalog service available
@@ -98,7 +59,6 @@ export default async function (app) {
       const layers = await catalogService.find({ query: { service: { $exists: true } }, paginate: false })
       layers.forEach(layer => {
         // Create a collection for feature service(s) except if service is filtered (ie not available)
-        console.log(layer.service, app.services[stripSlashes(`${apiPath}/${layer.service}`)])
         if (!app.services[stripSlashes(`${apiPath}/${layer.service}`)]) return
         collections = collections.concat(utils.generateCollections(baseUrl, layer))
       })
@@ -137,7 +97,7 @@ export default async function (app) {
   app.get(`${apiPath}/collections/:name`, async (req, res, next) => {
     try {
       const name = _.get(req, 'params.name')
-      const collection = await getCollection(name)
+      const collection = await utils.getCollection(app, name)
       debug('Getting collection', collection)
       res.json(collection)
     } catch (error) {
@@ -149,7 +109,7 @@ export default async function (app) {
       const name = _.get(req, 'params.name')
       const query = _.get(req, 'query', {})
       debug(`Getting features for collection ${name}`)
-      const features = await utils.getFeaturesFromService(app, `${apiPath}/${name}`, query)
+      const features = await utils.getFeaturesFromService(app, name, query)
       res.set('content-type', 'application/geo+json')
       res.json(features)
     } catch (error) {
@@ -163,7 +123,7 @@ export default async function (app) {
       // In this case the CQL filter is given as body
       query.filter = _.get(req, 'body')
       debug(`Getting features for collection ${name}`)
-      const features = await utils.getFeaturesFromService(app, `${apiPath}/${name}`, query)
+      const features = await utils.getFeaturesFromService(app, name, query)
       res.set('content-type', 'application/geo+json')
       res.json(features)
     } catch (error) {
@@ -176,7 +136,7 @@ export default async function (app) {
       const id = _.get(req, 'params.id')
       const query = _.get(req, 'query', {})
       debug(`Getting feature ${id} from collection ${name}`)
-      const feature = await utils.getFeatureFromService(app, `${apiPath}/${name}`, id)
+      const feature = await utils.getFeatureFromService(app, name, id)
       res.set('content-type', 'application/geo+json')
       res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, name, query, feature) }))
     } catch (error) {
@@ -188,7 +148,7 @@ export default async function (app) {
     try {
       const context = _.get(req, 'params.context')
       const name = _.get(req, 'params.name')
-      const collection = await getCollection(name, context)
+      const collection = await utils.getCollection(app, name, context)
       debug('Getting collection', collection)
       res.json(collection)
     } catch (error) {
@@ -201,7 +161,7 @@ export default async function (app) {
       const name = _.get(req, 'params.name')
       const query = _.get(req, 'query', {})
       debug(`Getting features for collection ${name} and context ${context}`)
-      const features = await utils.getFeaturesFromService(app, `${apiPath}/${context}/${name}`, query)
+      const features = await utils.getFeaturesFromService(app, name, query, context)
       res.set('content-type', 'application/geo+json')
       res.json(features)
     } catch (error) {
@@ -215,7 +175,7 @@ export default async function (app) {
       const id = _.get(req, 'params.id')
       const query = _.get(req, 'query', {})
       debug(`Getting feature ${id} from collection ${name} and context ${context}`)
-      const feature = await utils.getFeatureFromService(app, `${apiPath}/${context}/${name}`, id)
+      const feature = await utils.getFeatureFromService(app, name, id, context)
       res.set('content-type', 'application/geo+json')
       res.json(Object.assign(feature, { links: utils.generateFeatureLinks(baseUrl, `${context}/${name}`, query, feature) }))
     } catch (error) {

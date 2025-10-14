@@ -2,7 +2,7 @@ import _ from 'lodash'
 import makeDebug from 'debug'
 import errors from '@feathersjs/errors'
 import { parse as parseWtk } from 'wellknown'
-import { convertValue, convertDateTime } from './utils.js'
+import { convertValue, convertDateTime } from './utils.convert.js'
 
 const debug = makeDebug('kfs:utils:cql')
 const { BadRequest } = errors

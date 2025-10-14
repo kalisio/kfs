@@ -7,19 +7,23 @@ import path from 'path'
 import config from 'config'
 import fs from 'fs-extra'
 import request from 'superagent'
+import siftModule from 'sift'
 import { fileURLToPath } from 'url'
 import moment from 'moment'
 import distribution, { finalize } from '@kalisio/feathers-distributed'
 import { kdk } from '@kalisio/kdk/core.api.js'
 import { createFeaturesService, createCatalogService } from '@kalisio/kdk/map.api.js'
+import { getCollectionName } from '../src/utils.js'
 import createServer from '../src/main.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const modelsPath = path.join(__dirname, 'models')
 const servicesPath = path.join(__dirname, 'services')
+const sift = siftModule.default
 const { util, expect } = chai
 
 // Test suite based on using the catalog service or not
+// and using features service or not
 function runTests (options = {
   catalog: true,
   features: true
@@ -27,6 +31,7 @@ function runTests (options = {
   let app, server, baseUrl,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService, hubeauFilteredService,
     nbStations, nbStationsWithNullInfluLocal, nbObservations, feature
+  const nbFilteredStations = []
   const nbPerPage = 200
 
   it('initialize the remote app', async () => {
@@ -93,6 +98,10 @@ function runTests (options = {
     // Feed the collection
     let stations = fs.readJsonSync(path.join(__dirname, 'data/hubeau.stations.json')).features
     nbStations = stations.length
+    // Count stations for each filter
+    hubeauLayer.filters.forEach(filter => {
+      nbFilteredStations.push(stations.filter(sift(filter.active)).length)
+    })
     nbStationsWithNullInfluLocal = stations.filter(station => !station.properties.InfluLocal).length
     stations = await hubeauStationsService.create(stations)
     feature = stations[Math.floor(Math.random() * nbStations)]
@@ -196,7 +205,9 @@ function runTests (options = {
   it('get collections', async () => {
     const response = await request.get(`${baseUrl}/collections`)
     expect(response.body.collections).toExist()
-    expect(response.body.collections.length).to.equal(2)
+    // We should have hubeau stations + measures collection
+    // and this twice again as the layer declares two filters
+    expect(response.body.collections.length).to.equal(options.catalog && options.features ? 6 : 2)
     expect(response.body.links).toExist()
     expect(response.body.links.length).to.equal(1)
     response.body.links.forEach(link => {
@@ -242,6 +253,45 @@ function runTests (options = {
   // Let enough time to process
     .timeout(5000)
 
+  // When not using layers we don't have filter collections
+  if (options.catalog && options.features) {
+    it('get filter collection', async () => {
+      const hubeauLayer = _.find(defaultLayers, { name: 'Layers.HUBEAU' })
+      const filter = hubeauLayer.filters[0]
+      const filterName = _.get(hubeauLayer, `i18n.en.${filter.label}`)
+      const collection = getCollectionName('hubeau-stations', filterName)
+      const response = await request.get(`${baseUrl}/collections/${collection}`)
+      expect(response.body.id).toExist()
+      expect(response.body.id).to.equal(collection)
+      expect(response.body.itemType).toExist()
+      expect(response.body.itemType).to.equal('feature')
+      expect(response.body.title).toExist()
+      expect(response.body.description).toExist()
+      expect(response.body.extent).toExist()
+      expect(response.body.extent.spatial).toExist()
+      expect(response.body.extent.spatial.bbox).toExist()
+      expect(response.body.extent.spatial.crs).toExist()
+      expect(response.body.extent.temporal).toExist()
+      expect(response.body.extent.temporal.interval).toExist()
+      expect(response.body.extent.temporal.interval.length).to.equal(1)
+      expect(response.body.extent.temporal.interval[0].length).to.equal(2)
+      expect(response.body.extent.temporal.interval[0][0]).not.to.equal(null)
+      expect(response.body.extent.temporal.interval[0][1]).not.to.equal(null)
+      expect(response.body.extent.temporal.trs).toExist()
+      expect(response.body.defaultSortOrder).toExist()
+      expect(response.body.defaultSortOrder).to.deep.equal(['-time'])
+      expect(response.body.crs).toExist()
+      expect(response.body.links).toExist()
+      expect(response.body.links.length).to.equal(2)
+      response.body.links.forEach(link => {
+        expect(link.href).toExist()
+        expect(link.rel).toExist()
+      })
+    })
+    // Let enough time to process
+      .timeout(5000)
+  }
+
   it('get nonexistent collection', async () => {
     try {
       await request.get(`${baseUrl}/collections/xxx`)
@@ -271,6 +321,32 @@ function runTests (options = {
   })
   // Let enough time to process
     .timeout(5000)
+
+  // When not using layers we don't have filter collections
+  if (options.catalog && options.features) {
+    it('get filtered items', async () => {
+      const hubeauLayer = _.find(defaultLayers, { name: 'Layers.HUBEAU' })
+      for (let i = 0; i < hubeauLayer.filters.length; i++) {
+        const filter = hubeauLayer.filters[i]
+        const filterName = _.get(hubeauLayer, `i18n.en.${filter.label}`)
+        const collection = getCollectionName('hubeau-stations', filterName)
+        const response = await request.get(`${baseUrl}/collections/${collection}/items`)
+        expect(response.body.features).toExist()
+        expect(response.body.numberMatched).toExist()
+        expect(response.body.numberReturned).toExist()
+        expect(response.body.numberMatched).to.equal(nbFilteredStations[i])
+        expect(response.body.numberReturned).to.equal(nbFilteredStations[i] < nbPerPage ? nbFilteredStations[i] : nbPerPage)
+        response.body.links.forEach(link => {
+          expect(link.href).toExist()
+          expect(link.href.includes('offset')).beTrue()
+          expect(link.href.includes('limit')).beTrue()
+          expect(link.rel).toExist()
+        })
+      }
+    })
+    // Let enough time to process
+      .timeout(5000)
+  }
 
   it('get sorted items', async () => {
     // Use a string property that actually contains a number so that comparisons are made easy
