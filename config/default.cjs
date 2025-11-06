@@ -55,6 +55,8 @@ module.exports = {
     hooks: {
       before: { all: [commonHooks.disallow('external')] }
     },
-    healthcheckPath: apiPath + '/distribution/'
+    healthcheckPath: apiPath + '/distribution/',
+    // Increase default timeout due to possible large data volume
+    timeout: 60000
   }
 }
