@@ -57,6 +57,6 @@ module.exports = {
     },
     healthcheckPath: apiPath + '/distribution/',
     // Increase default timeout due to possible large data volume
-    timeout: 60000
+    timeout: process.env.DISTRIBUTION_TIMEOUT ? parseInt(process.env.DISTRIBUTION_TIMEOUT) : 60000
   }
 }
