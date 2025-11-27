@@ -206,7 +206,8 @@ export function generateCollection (baseUrl, name, title, description, query) {
     crs: [
       'http://www.opengis.net/def/crs/OGC/1.3/CRS84',
       'http://www.opengis.net/def/crs/OGC/1.3/4326'
-    ]
+    ],
+    storageCrs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
   }
 }
 
