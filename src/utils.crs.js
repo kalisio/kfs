@@ -1,10 +1,11 @@
-import _ from 'lodash'
-import makeDebug from 'debug'
+import fs from 'fs-extra'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import errors from '@feathersjs/errors'
-import epsg from 'epsg-index/all.json' with { type: 'json' }
 
-const debug = makeDebug('kfs:utils:crs')
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { BadRequest } = errors
+const epsg = fs.readJsonSync(path.join(__dirname, '..', 'node_modules', 'epsg-index', 'all.json'))
 const DefaultCrs = 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
 const DefaultCrsWithHeight = 'http://www.opengis.net/def/crs/OGC/0/CRS84h'
 
@@ -28,7 +29,7 @@ export function getSrid (crs) {
   return -1
 }
 
-export function getEpsg(crs) {
+export function getEpsg (crs) {
   if (isDefaultCrs()) {
     return epsg['4326']
   } else if (crs.startsWith('urn:ogc:def:crs:EPSG') || crs.startsWith('http://www.opengis.net/def/crs/EPSG')) {

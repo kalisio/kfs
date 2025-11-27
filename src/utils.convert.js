@@ -76,7 +76,7 @@ export function convertQuery (query, options = { properties: true }) {
       const crs = query['bbox-crs']
       // Parse EPSG code
       const epsg = getEpsg(crs)
-      if (!epsg) new BadRequest('Unknown CRS')
+      if (!epsg) throw new BadRequest('Unknown CRS')
       let min = point([bbox[0], bbox[1]])
       let max = point([bbox[2], bbox[3]])
       min = reproject.toWgs84(min, epsg.proj4)
