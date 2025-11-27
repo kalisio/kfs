@@ -482,6 +482,21 @@ function runTests (options = {
   // Let enough time to process
     .timeout(5000)
 
+  it('get items in bbox with CRS', async () => {
+    const response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({
+        bbox: [951316.244, 6805359.199, 952702.05, 6807643.879].join(','),
+        'bbox-crs': 'http://www.opengis.net/def/crs/EPSG/2154'
+      })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(1)
+    expect(response.body.numberReturned).to.equal(1)
+  })
+  // Let enough time to process
+    .timeout(5000)
+
   it('get paginated items', async () => {
     const nbPages = Math.ceil(nbStations / nbPerPage)
     const hasUnfilledPage = ((nbStations / nbPerPage) % 1 !== 0)

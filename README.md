@@ -112,7 +112,9 @@ To run the internal tests, use the subcommand `test`:
 yarn test
 ```
 
-To run the OGC API - Features Conformance Test Suite - available at https://github.com/opengeospatial/ets-ogcapi-features10:
+To run the OGC API - Features Conformance Test Suite - available at https://github.com/opengeospatial/ets-ogcapi-features10 - the most simple way is to use the [Docker container](https://github.com/opengeospatial/ets-ogcapi-features10/blob/master/src/site/asciidoc/how-to-run-the-tests.adoc#3-docker). In this case take care to use your local IP address and not `localhost` that will not work, run KFS with `HOSTNAME=your_ip`.
+
+You can also run it manually like this:
 1) use the JAR file provided in `test` or download the "all-in-one" JAR file that includes the test suite and all of its dependencies (e.g. `1.7` version) on the Maven central repository,
 2) update the target URL in the `test/test-run-props.xml` file if required
 3) run the following command `java -jar ets-ogcapi-features10-1.7-aio.jar -o /path/to/output -h /path/to/test-run-props.xml`

@@ -1,8 +1,11 @@
 import _ from 'lodash'
 import moment from 'moment'
 import makeDebug from 'debug'
+import reproject from 'reproject'
+import { point, getGeom } from '@turf/turf'
 import errors from '@feathersjs/errors'
 import { convertCqlQuery } from './utils.cql.js'
+import { getEpsg } from './utils.crs.js'
 
 const debug = makeDebug('kfs:utils:convert')
 const { BadRequest } = errors
@@ -66,8 +69,24 @@ export function convertQuery (query, options = { properties: true }) {
   }
   if (query.bbox) {
     // TODO: we should support additionnal CRS according to https://docs.ogc.org/DRAFTS/17-069r5.html#_parameter_bbox
-    const bbox = query.bbox.split(',').map(value => _.toNumber(value))
+    let bbox = query.bbox.split(',').map(value => _.toNumber(value))
     if (bbox.length < 4) throw new BadRequest('The bounding box parameter shall have at least four numbers')
+    // Convert coordinates if required
+    if (query['bbox-crs']) {
+      const crs = query['bbox-crs']
+      // Parse EPSG code
+      const epsg = getEpsg(crs)
+      if (!epsg) new BadRequest('Unknown CRS')
+      let min = point([bbox[0], bbox[1]])
+      let max = point([bbox[2], bbox[3]])
+      min = reproject.toWgs84(min, epsg.proj4)
+      max = reproject.toWgs84(max, epsg.proj4)
+      min = _.get(getGeom(min), 'coordinates')
+      max = _.get(getGeom(max), 'coordinates')
+      bbox = [min[0], min[1], max[0], max[1]]
+      debug(`Converted bbox from EPSG:${epsg.code}:`, bbox)
+      delete query['bbox-crs']
+    }
     Object.assign(convertedQuery, { south: bbox[1], north: bbox[3], east: bbox[2], west: bbox[0] })
     delete query.bbox
   }
