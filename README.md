@@ -2,6 +2,7 @@
 
 [![Latest Release](https://img.shields.io/github/v/tag/kalisio/kfs?sort=semver&label=latest)](https://github.com/kalisio/kfs/releases)
 [![CI](https://github.com/kalisio/kfs/actions/workflows/main.yaml/badge.svg)](https://github.com/kalisio/kfs/actions/workflows/main.yaml)
+[![Quality Gate Status](https://sonar.portal.kalisio.com/api/project_badges/measure?project=kalisio-kfs&metric=alert_status&token=sqb_3e3da8c91abe98896640284af9eb2a3672897d94)](https://sonar.portal.kalisio.com/dashboard?id=kalisio-kfs)
 [![Maintainability Issues](https://sonar.portal.kalisio.com/api/project_badges/measure?project=kalisio-kfs&metric=software_quality_maintainability_issues&token=sqb_3e3da8c91abe98896640284af9eb2a3672897d94)](https://sonar.portal.kalisio.com/dashboard?id=kalisio-kfs)
 [![Coverage](https://sonar.portal.kalisio.com/api/project_badges/measure?project=kalisio-kfs&metric=coverage&token=sqb_3e3da8c91abe98896640284af9eb2a3672897d94)](https://sonar.portal.kalisio.com/dashboard?id=kalisio-kfs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
