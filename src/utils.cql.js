@@ -36,6 +36,18 @@ export function convertIsNullTextCqlExpression (expression, operator) {
   return cqlJson
 }
 
+export function convertLikeTextCqlExpression (expression) {
+  const cqlJson = {}
+  const match = expression.match(/^(\w+)\s+(I?LIKE)\s+'([^']*)'$/i)
+  if (match) {
+    const property = match[1]
+    const operator = match[2].toLowerCase()
+    const pattern = match[3]
+    cqlJson[operator] = [{ property }, pattern]
+  }
+  return cqlJson
+}
+
 export function convertTextToJsonCql (expression) {
   const cqlJson = {}
   let operators = ['INTERSECTS', 'WITHIN']
@@ -46,7 +58,30 @@ export function convertTextToJsonCql (expression) {
   operators.forEach(operator => {
     Object.assign(cqlJson, convertIsNullTextCqlExpression(expression, operator))
   })
+  Object.assign(cqlJson, convertLikeTextCqlExpression(expression))
   return cqlJson
+}
+
+function likeToRegex (pattern, caseInsensitive = false) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  const regexStr = `^${escaped.replace(/%/g, '.*').replace(/_/g, '.')}$`
+  // Use PCRE inline flag so the string survives JSON serialization (avoids $options key)
+  return caseInsensitive ? `(?i)${regexStr}` : regexStr
+}
+
+export function convertLikeCqlExpression (expression) {
+  const query = {}
+  const operators = ['like', 'ilike']
+  operators.forEach(operator => {
+    if (_.has(expression, operator)) {
+      let property = _.get(expression, `${operator}[0].property`)
+      if (!ReservedProperties.includes(property)) property = `properties.${property}`
+      const pattern = _.get(expression, `${operator}[1]`)
+      if (!property || pattern === undefined) throw new BadRequest(`Invalid ${operator} operator specification`)
+      query[property] = { $regex: likeToRegex(pattern, operator === 'ilike') }
+    }
+  })
+  return query
 }
 
 export function convertComparisonCqlOperator (expression, operator) {
@@ -189,6 +224,7 @@ export function convertCqlExpression (expression) {
     convertIsNullCqlExpression(expression),
     convertLogicalCqlExpression(expression),
     convertComparisonCqlExpression(expression),
+    convertLikeCqlExpression(expression),
     convertTemporalCqlExpression(expression),
     convertSpatialCqlExpression(expression))
   return query

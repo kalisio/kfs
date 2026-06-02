@@ -26,6 +26,7 @@ Please refer to the [OGC API Features](https://ogcapi.ogc.org/features/) standar
 * the following CQL filtering operators are supported
   * logical operators `and`, `or`, `not`
   * comparison operators `eq`, `lt`, `gt`, `lte`, `gte`
+  * advanced comparison operators `like`, `ilike`
   * spatial operators `intersects`, `within`
   * temporal operators `before`, `after`, `during` (targetting instant property not interval)
 

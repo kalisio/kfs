@@ -30,7 +30,7 @@ function runTests (options = {
 }) {
   let app, server, baseUrl,
     kapp, catalogService, defaultLayers, hubeauStationsService, hubeauObsService, hubeauFilteredService,
-    nbStations, nbStationsWithNullInfluLocal, nbObservations, feature
+    nbStations, nbStationsWithNullInfluLocal, nbStationsLIMNI, nbStationsLIMNIWithNullInfluLocal, nbObservations, feature
   const nbFilteredStations = []
   const nbPerPage = 200
 
@@ -103,6 +103,8 @@ function runTests (options = {
       nbFilteredStations.push(stations.filter(sift(filter.active)).length)
     })
     nbStationsWithNullInfluLocal = stations.filter(station => !station.properties.InfluLocal).length
+    nbStationsLIMNI = stations.filter(station => station.properties.TypStation === 'LIMNI').length
+    nbStationsLIMNIWithNullInfluLocal = stations.filter(station => station.properties.TypStation === 'LIMNI' && !station.properties.InfluLocal).length
     stations = await hubeauStationsService.create(stations)
     feature = stations[Math.floor(Math.random() * nbStations)]
   })
@@ -731,6 +733,47 @@ function runTests (options = {
   })
   // Let enough time to process
     .timeout(5000)
+
+  it('cql like expressions', async () => {
+    // CQL JSON: case-sensitive exact match
+    let response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-json', limit: 3 })
+      .send({ like: [{ property: 'TypStation' }, 'LIMNI'] })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+    response.body.features.forEach(f => expect(f.properties.TypStation).to.equal('LIMNI'))
+    // CQL JSON: case-insensitive via ilike
+    response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-json', limit: 3 })
+      .send({ ilike: [{ property: 'TypStation' }, 'limni'] })
+    expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+    response.body.features.forEach(f => expect(f.properties.TypStation.toLowerCase()).to.equal('limni'))
+    // CQL JSON: wildcard pattern
+    response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-json' })
+      .send({ like: [{ property: 'LbStationH' }, '%Wasselonne%'] })
+    expect(response.body.numberMatched).to.equal(1)
+    // CQL JSON: NOT LIKE
+    response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-json' })
+      .send({ not: [{ like: [{ property: 'TypStation' }, 'LIMNI'] }] })
+    expect(response.body.numberMatched).to.equal(nbStations - nbStationsLIMNI)
+    // CQL JSON: AND combining LIKE with another predicate
+    response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-json' })
+      .send({ and: [{ like: [{ property: 'TypStation' }, 'LIMNI'] }, { isNull: { property: 'InfluLocal' } }] })
+    expect(response.body.numberMatched).to.equal(nbStationsLIMNIWithNullInfluLocal)
+    // CQL text: LIKE
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `TypStation LIKE 'LIMNI'`, limit: 3 })
+    expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+    // CQL text: ILIKE
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `TypStation ILIKE 'limni'`, limit: 3 })
+    expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+  })
+  // Let enough time to process
+    .timeout(10000)
 
   it('cql logical expressions', async () => {
     let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
