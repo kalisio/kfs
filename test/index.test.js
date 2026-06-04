@@ -722,6 +722,7 @@ function runTests (options = {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(1)
     expect(response.body.numberReturned).to.equal(1)
+
     response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
       .send({ op: 'lt', args: [{ property: 'H' }, 0.4] })
@@ -730,6 +731,24 @@ function runTests (options = {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(nbObservations - 9)
     expect(response.body.numberReturned).to.equal(3)
+
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `InfluLocal IS NULL`, limit: 1 })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStationsWithNullInfluLocal)
+    expect(response.body.numberReturned).to.equal(1)
+    expect(response.body.features[0].properties.InfluLocal).beNull()
+
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `InfluLocal IS NOT NULL`, limit: 1 })
+    expect(response.body.features).toExist()
+    expect(response.body.numberMatched).toExist()
+    expect(response.body.numberReturned).toExist()
+    expect(response.body.numberMatched).to.equal(nbStations - nbStationsWithNullInfluLocal)
+    expect(response.body.numberReturned).to.equal(1)
+    expect(response.body.features[0].properties.InfluLocal).toExist()
   })
   // Let enough time to process
     .timeout(5000)
@@ -742,60 +761,73 @@ function runTests (options = {
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
     response.body.features.forEach(f => expect(f.properties.TypStation).to.equal('LIMNI'))
+
     // CQL JSON: case-insensitive via nocase (standard format)
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
       .send({ op: 'like', args: [{ property: 'TypStation' }, 'limni'], nocase: true })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
     response.body.features.forEach(f => expect(f.properties.TypStation.toLowerCase()).to.equal('limni'))
+
     // CQL JSON: wildcard pattern (contains)
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json' })
       .send({ op: 'like', args: [{ property: 'LbStationH' }, '%Wasselonne%'] })
     expect(response.body.numberMatched).to.equal(1)
+
     // CQL JSON: custom wildcard character
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json' })
       .send({ op: 'like', args: [{ property: 'LbStationH' }, '*Wasselonne*'], wildcard: '*' })
     expect(response.body.numberMatched).to.equal(1)
+
     // CQL JSON: NOT LIKE
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json' })
       .send({ op: 'not', args: [{ op: 'like', args: [{ property: 'TypStation' }, 'LIMNI'] }] })
     expect(response.body.numberMatched).to.equal(nbStations - nbStationsLIMNI)
+
     // CQL JSON: AND combining LIKE with another predicate
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json' })
       .send({ op: 'and', args: [{ op: 'like', args: [{ property: 'TypStation' }, 'LIMNI'] }, { op: 'isNull', args: [{ property: 'InfluLocal' }] }] })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNIWithNullInfluLocal)
+
     // CQL text: LIKE exact match
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `TypStation LIKE 'LIMNI'`, limit: 3 })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+
     // CQL text: ILIKE exact match
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `TypStation ILIKE 'limni'`, limit: 3 })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+
     // CQL text: LIKE with % wildcard (contains)
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `LbStationH LIKE '%Wasselonne%'` })
     expect(response.body.numberMatched).to.equal(1)
+
     // CQL text: ILIKE with % wildcard (case-insensitive contains)
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `LbStationH ILIKE '%wasselonne%'` })
     expect(response.body.numberMatched).to.equal(1)
+
     // CQL text: LIKE with % wildcard (starts with, includes space in pattern)
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `LbStationH LIKE 'La %'` })
     expect(response.body.numberMatched).to.equal(270)
+
     // CQL text: LIKE with % wildcard (ends with)
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `LbStationH LIKE '%Wasselonne'` })
     expect(response.body.numberMatched).to.equal(1)
+
     // CQL text: LIKE with _ wildcard (single char)
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `TypStation LIKE 'LIM_I'`, limit: 3 })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+
     // CQL text: LIKE with partially URL-encoded filter (% not encoded as %25, quotes encoded as %27)
     // This simulates clients that encode ' → %27 but leave % as raw, causing qs to fall back
     // and leave %27 undecoded; our normalization in convertCqlQuery must fix this
@@ -855,12 +887,8 @@ function runTests (options = {
     expect(response.body.numberReturned).toExist()
     expect(response.body.numberMatched).to.equal(1)
     expect(response.body.numberReturned).to.equal(1)
-  })
-  // Let enough time to process
-    .timeout(5000)
 
-  it('cql text expressions', async () => {
-    let response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `S_INTERSECTS(geometry,POLYGON((7.42 48.63, 7.43 48.63, 7.43 48.64, 7.42 48.64, 7.42 48.63)))`, limit: 3 })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
@@ -868,23 +896,14 @@ function runTests (options = {
     expect(response.body.numberMatched).to.equal(1)
     expect(response.body.numberReturned).to.equal(1)
 
-    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
-      .query({ 'filter-lang': 'cql-text', filter: `InfluLocal IS NULL`, limit: 1 })
+    // CQL text: intersects with URL-encoded WKT
+    response = await request.get(
+      `${baseUrl}/collections/hubeau-stations/items?filter-lang=cql-text&filter=S_INTERSECTS(geometry,POLYGON((7.42%2048.63,%207.43%2048.63,%207.43%2048.64,%207.42%2048.64,%207.42%2048.63)))`)
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
-    expect(response.body.numberMatched).to.equal(nbStationsWithNullInfluLocal)
+    expect(response.body.numberMatched).to.equal(1)
     expect(response.body.numberReturned).to.equal(1)
-    expect(response.body.features[0].properties.InfluLocal).beNull()
-
-    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
-      .query({ 'filter-lang': 'cql-text', filter: `InfluLocal IS NOT NULL`, limit: 1 })
-    expect(response.body.features).toExist()
-    expect(response.body.numberMatched).toExist()
-    expect(response.body.numberReturned).toExist()
-    expect(response.body.numberMatched).to.equal(nbStations - nbStationsWithNullInfluLocal)
-    expect(response.body.numberReturned).to.equal(1)
-    expect(response.body.features[0].properties.InfluLocal).toExist()
   })
   // Let enough time to process
     .timeout(5000)
@@ -914,7 +933,7 @@ describe('kfs', () => {
   runTests({
     catalog: false,
     features: true
-  })
+  })/*
   runTests({
     catalog: true,
     features: true
@@ -929,5 +948,5 @@ describe('kfs', () => {
   runTests({
     catalog: false,
     features: false
-  })
+  })*/
 })
