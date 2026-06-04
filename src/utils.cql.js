@@ -237,8 +237,12 @@ export function convertCqlQuery (query) {
   // if (encoding !== 'cql-json') throw new BadRequest('Only JSON encoding of CQL is supported')
   let filter = _.get(query, 'filter')
   if (encoding === 'cql-text') {
+    // Decode any remaining valid %XX sequences that qs may have left undecoded when
+    // a raw % wildcard (not encoded as %25) in the same value caused decodeURIComponent to throw
+    if (typeof filter === 'string') filter = filter.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    const textFilter = filter
     filter = convertTextToJsonCql(filter)
-    debug('Converted CQL expression from text', filter)
+    debug('Converted CQL expression from text', textFilter, filter)
   }
   return convertCqlExpression(filter)
 }

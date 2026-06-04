@@ -763,14 +763,43 @@ function runTests (options = {
       .query({ 'filter-lang': 'cql-json' })
       .send({ and: [{ like: [{ property: 'TypStation' }, 'LIMNI'] }, { isNull: { property: 'InfluLocal' } }] })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNIWithNullInfluLocal)
-    // CQL text: LIKE
+    // CQL text: LIKE exact match
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `TypStation LIKE 'LIMNI'`, limit: 3 })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
-    // CQL text: ILIKE
+    // CQL text: ILIKE exact match
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-text', filter: `TypStation ILIKE 'limni'`, limit: 3 })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+    // CQL text: LIKE with % wildcard (contains)
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `LbStationH LIKE '%Wasselonne%'` })
+    expect(response.body.numberMatched).to.equal(1)
+    // CQL text: ILIKE with % wildcard (case-insensitive contains)
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `LbStationH ILIKE '%wasselonne%'` })
+    expect(response.body.numberMatched).to.equal(1)
+    // CQL text: LIKE with % wildcard (starts with, includes space in pattern)
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `LbStationH LIKE 'La %'` })
+    expect(response.body.numberMatched).to.equal(270)
+    // CQL text: LIKE with % wildcard (ends with)
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `LbStationH LIKE '%Wasselonne'` })
+    expect(response.body.numberMatched).to.equal(1)
+    // CQL text: LIKE with _ wildcard (single char)
+    response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-text', filter: `TypStation LIKE 'LIM_I'`, limit: 3 })
+    expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
+    // CQL text: LIKE with partially URL-encoded filter (% not encoded as %25, quotes encoded as %27)
+    // This simulates clients that encode ' → %27 but leave % as raw, causing qs to fall back
+    // and leave %27 undecoded; our normalization in convertCqlQuery must fix this
+    response = await request.get(
+      `${baseUrl}/collections/hubeau-stations/items?filter-lang=cql-text&filter=LbStationH%20LIKE%20%27%25Wasselonne%25%27`)
+    expect(response.body.numberMatched).to.equal(1)
+    response = await request.get(
+      `${baseUrl}/collections/hubeau-stations/items?filter-lang=cql-text&filter=LbStationH%20LIKE%20%27%Wasselonne%25%27`)
+    expect(response.body.numberMatched).to.equal(1)
   })
   // Let enough time to process
     .timeout(10000)
