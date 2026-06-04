@@ -25,14 +25,14 @@ Please refer to the [OGC API Features](https://ogcapi.ogc.org/features/) standar
 * only a [bbox in WGS 84 CRS](https://docs.ogc.org/is/17-069r4/17-069r4.html#_parameter_bbox) is supported
 * the following CQL filtering operators are supported
   * logical operators `and`, `or`, `not`
-  * comparison operators `eq`, `lt`, `gt`, `lte`, `gte`
+  * comparison operators `eq`, `lt`, `gt`, `lte`, `gte`, `between`, `in`, `isNull`
   * advanced comparison operators `like`, `ilike`
   * spatial operators `intersects`, `within`
   * temporal operators `before`, `after`, `during` (targetting instant property not interval)
 
 > Note:
 > 
-> Only CQL JSON encoding is fully supported, only spatial filters are supported for CQL in text encoding.
+> Only CQL JSON encoding is fully supported, only spatial, is null or like filters are supported for CQL in text encoding.
 
 ### /healthcheck (GET)
 
