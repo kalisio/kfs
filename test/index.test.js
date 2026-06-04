@@ -695,7 +695,7 @@ function runTests (options = {
   it('cql is null expressions', async () => {
     let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ isNull: { property: 'H' } })
+      .send({ op: 'isNull', args: [{ property: 'H' }] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
@@ -703,7 +703,7 @@ function runTests (options = {
     expect(response.body.numberReturned).to.equal(0)
     response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ not: { isNull: { property: 'H' } } })
+      .send({ op: 'not', args: [{ op: 'isNull', args: [{ property: 'H' }] }] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
@@ -716,7 +716,7 @@ function runTests (options = {
   it('cql comparison expressions', async () => {
     let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ eq: [{ property: 'H' }, 0.63] })
+      .send({ op: 'eq', args: [{ property: 'H' }, 0.63] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
@@ -724,7 +724,7 @@ function runTests (options = {
     expect(response.body.numberReturned).to.equal(1)
     response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ lt: [{ property: 'H' }, 0.4] })
+      .send({ op: 'lt', args: [{ property: 'H' }, 0.4] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
@@ -738,30 +738,35 @@ function runTests (options = {
     // CQL JSON: case-sensitive exact match
     let response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ like: [{ property: 'TypStation' }, 'LIMNI'] })
+      .send({ op: 'like', args: [{ property: 'TypStation' }, 'LIMNI'] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
     response.body.features.forEach(f => expect(f.properties.TypStation).to.equal('LIMNI'))
-    // CQL JSON: case-insensitive via ilike
+    // CQL JSON: case-insensitive via nocase (standard format)
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ ilike: [{ property: 'TypStation' }, 'limni'] })
+      .send({ op: 'like', args: [{ property: 'TypStation' }, 'limni'], nocase: true })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNI)
     response.body.features.forEach(f => expect(f.properties.TypStation.toLowerCase()).to.equal('limni'))
-    // CQL JSON: wildcard pattern
+    // CQL JSON: wildcard pattern (contains)
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json' })
-      .send({ like: [{ property: 'LbStationH' }, '%Wasselonne%'] })
+      .send({ op: 'like', args: [{ property: 'LbStationH' }, '%Wasselonne%'] })
+    expect(response.body.numberMatched).to.equal(1)
+    // CQL JSON: custom wildcard character
+    response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
+      .query({ 'filter-lang': 'cql-json' })
+      .send({ op: 'like', args: [{ property: 'LbStationH' }, '*Wasselonne*'], wildcard: '*' })
     expect(response.body.numberMatched).to.equal(1)
     // CQL JSON: NOT LIKE
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json' })
-      .send({ not: [{ like: [{ property: 'TypStation' }, 'LIMNI'] }] })
+      .send({ op: 'not', args: [{ op: 'like', args: [{ property: 'TypStation' }, 'LIMNI'] }] })
     expect(response.body.numberMatched).to.equal(nbStations - nbStationsLIMNI)
     // CQL JSON: AND combining LIKE with another predicate
     response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json' })
-      .send({ and: [{ like: [{ property: 'TypStation' }, 'LIMNI'] }, { isNull: { property: 'InfluLocal' } }] })
+      .send({ op: 'and', args: [{ op: 'like', args: [{ property: 'TypStation' }, 'LIMNI'] }, { op: 'isNull', args: [{ property: 'InfluLocal' }] }] })
     expect(response.body.numberMatched).to.equal(nbStationsLIMNIWithNullInfluLocal)
     // CQL text: LIKE exact match
     response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
@@ -807,7 +812,7 @@ function runTests (options = {
   it('cql logical expressions', async () => {
     let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ and: [{ gte: [{ property: 'H' }, 0.63] }, { lte: [{ property: 'H' }, 0.63] }] })
+      .send({ op: 'and', args: [{ op: 'gte', args: [{ property: 'H' }, 0.63] }, { op: 'lte', args: [{ property: 'H' }, 0.63] }] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
@@ -815,7 +820,7 @@ function runTests (options = {
     expect(response.body.numberReturned).to.equal(1)
     response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ not: [{ lt: [{ property: 'H' }, 0.63] }] })
+      .send({ op: 'not', args: [{ op: 'lt', args: [{ property: 'H' }, 0.63] }] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
@@ -829,7 +834,7 @@ function runTests (options = {
     // Data in range 2018-10-22T22:00:00.000Z/2018-10-24T08:00:00.000Z every hour
     let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json' })
-      .send({ during: [{ property: 'time' }, ['2018-10-22T22:00:00.000Z', '2018-10-24T08:00:00.000Z']]})
+      .send({ op: 'during', args: [{ property: 'time' }, ['2018-10-22T22:00:00.000Z', '2018-10-24T08:00:00.000Z']]})
     // First day = 3 obs, second day 24 obs, third day 8 obs
     const nbObservations = 3 + 24 + 8
     expect(response.body.features).toExist()
@@ -844,7 +849,7 @@ function runTests (options = {
   it('cql spatial expressions', async () => {
     let response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ intersects: [{ property: 'geometry' }, { type: 'Polygon', coordinates: [[[7.42, 48.63], [7.43, 48.63], [7.43, 48.64], [7.42, 48.64], [7.42, 48.63]]] }] })
+      .send({ op: 'intersects', args: [{ property: 'geometry' }, { type: 'Polygon', coordinates: [[[7.42, 48.63], [7.43, 48.63], [7.43, 48.64], [7.42, 48.64], [7.42, 48.63]]] }] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
