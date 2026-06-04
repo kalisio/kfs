@@ -27,8 +27,8 @@ Please refer to the [OGC API Features](https://ogcapi.ogc.org/features/) standar
   * logical operators `and`, `or`, `not`
   * comparison operators `eq`, `lt`, `gt`, `lte`, `gte`, `between`, `in`, `isNull`
   * advanced comparison operators `like`, `ilike`
-  * spatial operators `intersects`, `within`
-  * temporal operators `before`, `after`, `during` (targetting instant property not interval)
+  * spatial operators `s_intersects`, `s_within`
+  * temporal operators `t_before`, `t_after`, `t_during` (targetting instant property not interval)
 
 > Note:
 > 

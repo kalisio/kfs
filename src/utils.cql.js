@@ -55,7 +55,7 @@ export function convertLikeTextCqlExpression (expression) {
 
 export function convertTextToJsonCql (expression) {
   const cqlJson = {}
-  let operators = ['INTERSECTS', 'WITHIN']
+  let operators = ['S_INTERSECTS', 'S_WITHIN']
   operators.forEach(operator => {
     Object.assign(cqlJson, convertSpatialTextCqlExpression(expression, operator))
   })
@@ -145,19 +145,19 @@ export function convertComparisonCqlExpression (expression) {
 
 export function convertTemporalCqlExpression (expression) {
   const query = {}
-  if (expression.op === 'before') {
+  if (expression.op === 't_before') {
     let property = _.get(expression, 'args[0].property')
     if (!ReservedProperties.includes(property)) property = `properties.${property}`
     const upper = _.get(expression, 'args[1]')
     if (!property || !upper) throw new BadRequest('Invalid before operator specification')
     query[property] = { $lt: convertDateTime(upper) }
-  } else if (expression.op === 'after') {
+  } else if (expression.op === 't_after') {
     let property = _.get(expression, 'args[0].property')
     if (!ReservedProperties.includes(property)) property = `properties.${property}`
     const lower = _.get(expression, 'args[1]')
     if (!property || !lower) throw new BadRequest('Invalid after operator specification')
     query[property] = { $gt: convertDateTime(lower) }
-  } else if (expression.op === 'during') {
+  } else if (expression.op === 't_during') {
     let property = _.get(expression, 'args[0].property')
     if (!ReservedProperties.includes(property)) property = `properties.${property}`
     const lower = _.get(expression, 'args[1][0]')
@@ -170,13 +170,13 @@ export function convertTemporalCqlExpression (expression) {
 
 export function convertSpatialCqlExpression (expression) {
   const query = {}
-  if (expression.op === 'intersects') {
+  if (expression.op === 's_intersects') {
     const property = _.get(expression, 'args[0].property', 'geometry')
     const geometry = _.get(expression, 'args[1]')
     if (!property || !geometry) throw new BadRequest('Invalid spatial operator specification')
     debug('Processed CQL intersects geometry:', geometry)
     query[property] = { $geoIntersects: { $geometry: geometry } }
-  } else if (expression.op === 'within') {
+  } else if (expression.op === 's_within') {
     const property = _.get(expression, 'args[0].property', 'geometry')
     const geometry = _.get(expression, 'args[1]')
     if (!property || !geometry) throw new BadRequest('Invalid spatial operator specification')
@@ -233,8 +233,8 @@ export function convertCqlExpression (expression) {
   if (['and', 'or', 'not'].includes(op)) return convertLogicalCqlExpression(expression)
   if (['eq', 'lt', 'gt', 'lte', 'gte', 'between', 'in'].includes(op)) return convertComparisonCqlExpression(expression)
   if (op === 'like') return convertLikeCqlExpression(expression)
-  if (['before', 'after', 'during'].includes(op)) return convertTemporalCqlExpression(expression)
-  if (['intersects', 'within'].includes(op)) return convertSpatialCqlExpression(expression)
+  if (['t_before', 't_after', 't_during'].includes(op)) return convertTemporalCqlExpression(expression)
+  if (['s_intersects', 's_within'].includes(op)) return convertSpatialCqlExpression(expression)
   return {}
 }
 

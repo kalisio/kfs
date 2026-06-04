@@ -834,7 +834,7 @@ function runTests (options = {
     // Data in range 2018-10-22T22:00:00.000Z/2018-10-24T08:00:00.000Z every hour
     let response = await request.post(`${baseUrl}/collections/hubeau-observations/items`)
       .query({ 'filter-lang': 'cql-json' })
-      .send({ op: 'during', args: [{ property: 'time' }, ['2018-10-22T22:00:00.000Z', '2018-10-24T08:00:00.000Z']]})
+      .send({ op: 't_during', args: [{ property: 'time' }, ['2018-10-22T22:00:00.000Z', '2018-10-24T08:00:00.000Z']]})
     // First day = 3 obs, second day 24 obs, third day 8 obs
     const nbObservations = 3 + 24 + 8
     expect(response.body.features).toExist()
@@ -849,7 +849,7 @@ function runTests (options = {
   it('cql spatial expressions', async () => {
     let response = await request.post(`${baseUrl}/collections/hubeau-stations/items`)
       .query({ 'filter-lang': 'cql-json', limit: 3 })
-      .send({ op: 'intersects', args: [{ property: 'geometry' }, { type: 'Polygon', coordinates: [[[7.42, 48.63], [7.43, 48.63], [7.43, 48.64], [7.42, 48.64], [7.42, 48.63]]] }] })
+      .send({ op: 's_intersects', args: [{ property: 'geometry' }, { type: 'Polygon', coordinates: [[[7.42, 48.63], [7.43, 48.63], [7.43, 48.64], [7.42, 48.64], [7.42, 48.63]]] }] })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
@@ -861,7 +861,7 @@ function runTests (options = {
 
   it('cql text expressions', async () => {
     let response = await request.get(`${baseUrl}/collections/hubeau-stations/items`)
-      .query({ 'filter-lang': 'cql-text', filter: `INTERSECTS(geometry,POLYGON((7.42 48.63, 7.43 48.63, 7.43 48.64, 7.42 48.64, 7.42 48.63)))`, limit: 3 })
+      .query({ 'filter-lang': 'cql-text', filter: `S_INTERSECTS(geometry,POLYGON((7.42 48.63, 7.43 48.63, 7.43 48.64, 7.42 48.64, 7.42 48.63)))`, limit: 3 })
     expect(response.body.features).toExist()
     expect(response.body.numberMatched).toExist()
     expect(response.body.numberReturned).toExist()
