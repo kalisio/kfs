@@ -5,3 +5,6 @@
 .babelrc
 .idea/
 test/
+docs/
+coverage/
+mcp/node_modules
