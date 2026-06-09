@@ -9,3 +9,5 @@ docs/
 coverage/
 mcp/node_modules
 .npmrc.publish
+.claude
+mcp/.claude
