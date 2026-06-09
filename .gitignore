@@ -20,3 +20,4 @@ node_modules/
 
 # Local config
 config/local.cjs
+.npmrc.publish

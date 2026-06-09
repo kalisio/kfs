@@ -8,3 +8,4 @@ test/
 docs/
 coverage/
 mcp/node_modules
+.npmrc.publish
