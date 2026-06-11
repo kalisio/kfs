@@ -25,12 +25,37 @@ npm install
 
 ## Configuration
 
-One environment variable controls the server:
+| Variable    | Default                     | Description                                                                                     |
+|-------------|-----------------------------|-------------------------------------------------------------------------------------------------|
+| `KFS_URL`   | `http://localhost:8081/api` | Base URL of the KFS API                                                                         |
+| `KFS_JWT`   | *(unset)*                   | JWT sent as `Authorization: Bearer <token>` on every request. Required only when KFS requires authentication. |
+| `MCP_PORT`  | *(unset)*                   | When set, starts an HTTP server on this port (Streamable HTTP transport) instead of stdio. Use for remote deployments. |
 
-| Variable  | Default                        | Description                                              |
-|-----------|--------------------------------|----------------------------------------------------------|
-| `KFS_URL` | `http://localhost:8081/api`    | Base URL of the KFS API                                  |
-| `KFS_JWT` | *(unset)*                      | JWT sent as `Authorization: Bearer <token>` on every request. Required only when KFS is deployed behind authentication. |
+---
+
+## Transport modes
+
+### Stdio (default — local use)
+
+The server runs as a subprocess and communicates over standard I/O. This is the standard mode for Claude Desktop and for `claude mcp add` without a URL.
+
+### HTTP / Streamable HTTP (remote deployments)
+
+When `MCP_PORT` is set, the server starts an HTTP server and exposes the MCP endpoint at `POST /mcp` using the [MCP Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http). This allows Claude Code to connect to a KFS MCP server deployed on a remote host using a URL.
+
+```bash
+MCP_PORT=3001 KFS_URL=https://my-kfs-server.example.com/api KFS_JWT=your.jwt.token node server.js
+```
+
+Then add it to Claude Code:
+
+```bash
+claude mcp add kfs --transport http http://localhost:3001/mcp
+# or for a remote deployment:
+claude mcp add kfs --transport http https://my-mcp-host.example.com/mcp
+```
+
+> **Note:** When deploying behind a reverse proxy (nginx, Traefik…), ensure the `/mcp` path is forwarded and that long-lived POST connections are not cut off by proxy timeouts.
 
 ---
 
@@ -73,19 +98,27 @@ Restart Claude Desktop after saving the file.
 
 ## Usage with Claude Code (CLI)
 
-Add the server to your project or user MCP settings:
+### Local subprocess (stdio)
 
 ```bash
 claude mcp add kfs -- node /absolute/path/to/kfs/mcp/server.js
 ```
 
-Or with a custom URL and JWT:
+With a custom URL and JWT:
 
 ```bash
 claude mcp add kfs \
   -e KFS_URL=https://my-kfs-server.example.com/api \
   -e KFS_JWT=your.jwt.token \
   -- node /absolute/path/to/kfs/mcp/server.js
+```
+
+### Remote server (HTTP transport)
+
+If the MCP server is already running remotely (started with `MCP_PORT`):
+
+```bash
+claude mcp add kfs --transport http https://my-mcp-host.example.com/mcp
 ```
 
 ---
@@ -138,13 +171,14 @@ Query features from a collection. Returns a GeoJSON FeatureCollection.
 | `context`     | string           | no       | Context segment |
 | `limit`       | integer          | no       | Max features to return |
 | `offset`      | integer          | no       | Skip N features (for pagination) |
-| `bbox`        | string           | no       | Spatial filter: `"minLon,minLat,maxLon,maxLat"` in WGS 84 |
-| `bbox_crs`    | string           | no       | CRS of the bbox (OGC URI/URN, default WGS 84) |
+| `bbox`        | string           | no       | Spatial filter: `"minLon,minLat,maxLon,maxLat"` **in WGS 84 (EPSG:4326) only** |
 | `datetime`    | string           | no       | Temporal filter (ISO 8601 instant or interval) |
 | `sortby`      | string           | no       | Sort fields, e.g. `"-time,+name"` |
-| `filter`      | string           | no       | CQL filter expression |
-| `filter_lang` | `cql-text`\|`cql-json` | no | CQL dialect (default `cql-text`) |
+| `filter`      | string           | no       | CQL filter expression (see below) |
+| `filter_lang` | `cql-text`\|`cql-json` | no | CQL dialect — **`cql-json` recommended** (see below) |
 | `properties`  | object           | no       | Additional property equality filters |
+
+> **bbox limitation:** KFS only supports bounding boxes in WGS 84 (EPSG:4326). Other CRS are not supported.
 
 #### Temporal filter examples
 
@@ -159,26 +193,22 @@ Query features from a collection. Returns a GeoJSON FeatureCollection.
 2024-01-01T00:00:00Z/..
 ```
 
-#### CQL filter examples (cql-text)
+#### CQL filter language
 
+KFS supports two CQL encodings with different operator coverage:
+
+| Encoding      | Supported operators |
+|---------------|---------------------|
+| `cql-json` ✓ | Logical (`and`, `or`, `not`), comparison (`eq`, `lt`, `gt`, `lte`, `gte`, `between`, `in`, `isNull`, `like`, `ilike`), spatial (`s_intersects`, `s_within`), temporal (`t_before`, `t_after`, `t_during`) |
+| `cql-text`    | Spatial operators only (`S_INTERSECTS`, `S_WITHIN`), `IS NULL`, and `LIKE`/`ILIKE` |
+
+**Use `cql-json` for everything except simple spatial or null checks.**
+
+#### CQL JSON filter examples (recommended)
+
+```json
+{ "op": "gt", "args": [{ "property": "temperature" }, 20] }
 ```
-# Numeric comparison
-temperature > 20
-
-# Combined with logical operators
-temperature > 20 AND status = 'active'
-
-# Spatial filter (WKT geometry)
-S_INTERSECTS(geometry, POLYGON((2.3 48.8, 2.4 48.8, 2.4 48.9, 2.3 48.9, 2.3 48.8)))
-
-# Null check
-windSpeed IS NULL
-
-# In list
-category IN ('A', 'B', 'C')
-```
-
-#### CQL filter example (cql-json)
 
 ```json
 {
@@ -188,6 +218,23 @@ category IN ('A', 'B', 'C')
     { "op": "eq", "args": [{ "property": "status" }, "active"] }
   ]
 }
+```
+
+```json
+{ "op": "s_intersects", "args": [{ "property": "geometry" }, { "type": "Polygon", "coordinates": [[[2.3,48.8],[2.4,48.8],[2.4,48.9],[2.3,48.9],[2.3,48.8]]] }] }
+```
+
+#### CQL text filter examples (limited)
+
+```
+# Spatial filter
+S_INTERSECTS(geometry, POLYGON((2.3 48.8, 2.4 48.8, 2.4 48.9, 2.3 48.9, 2.3 48.8)))
+
+# Null check
+windSpeed IS NULL
+
+# Pattern match
+name LIKE 'Paris%'
 ```
 
 #### Sorting examples
@@ -242,26 +289,18 @@ Once the MCP server is connected, you can ask Claude things like:
 
 ---
 
-## Supported CQL operators
-
-| Category    | Operators                                        |
-|-------------|--------------------------------------------------|
-| Logical     | `AND`, `OR`, `NOT`                               |
-| Comparison  | `=`, `<`, `>`, `<=`, `>=`, `BETWEEN`, `IN`       |
-| Spatial     | `S_INTERSECTS`, `S_WITHIN`                       |
-| Temporal    | `T_BEFORE`, `T_AFTER`, `T_DURING`                |
-| Null        | `IS NULL`                                        |
-
----
-
 ## Running the server manually (for testing)
 
 ```bash
-# Unauthenticated
+# Stdio mode (unauthenticated)
 KFS_URL=http://localhost:8081/api node server.js
 
-# Authenticated
+# Stdio mode (authenticated)
 KFS_URL=https://my-kfs-server.example.com/api KFS_JWT=your.jwt.token node server.js
+
+# HTTP mode on port 3001
+MCP_PORT=3001 KFS_URL=http://localhost:8081/api node server.js
 ```
 
-The server communicates over stdio (standard MCP transport), so no HTTP port is opened.
+In stdio mode the server communicates over stdin/stdout (standard MCP transport) and opens no HTTP port.
+In HTTP mode the server listens on `0.0.0.0:<MCP_PORT>` and exposes `POST /mcp`.
